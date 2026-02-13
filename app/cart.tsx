@@ -28,7 +28,17 @@ export default function CartScreen() {
             await clearCart();
 
             Alert.alert('Success', 'Order placed successfully!', [
-                { text: 'OK', onPress: () => router.replace('/(tabs)/orders') }
+                {
+                    text: 'OK',
+                    onPress: () => {
+                        // Dismiss the modal first, then navigate to the existing tab
+                        // preventing stack replacement issues that might cause app close/crash
+                        if (router.canDismiss()) {
+                            router.dismiss();
+                        }
+                        router.navigate('/(tabs)/orders');
+                    }
+                }
             ]);
         } catch (error: any) {
             Alert.alert('Error', error.response?.data?.message || 'Failed to place order');
