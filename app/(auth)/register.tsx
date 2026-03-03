@@ -1,5 +1,4 @@
 import { useRouter } from 'expo-router';
-import { Lock, Mail, MapPin, Phone, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
@@ -15,8 +14,6 @@ import {
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
-
-const INPUT_ICON_PROPS = { color: Colors.dark.textSecondary, size: 20 };
 
 export default function RegisterScreen() {
     const [username, setUsername] = useState('');
@@ -93,85 +90,85 @@ export default function RegisterScreen() {
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={true}
             >
                 <View style={styles.header}>
                     <Text style={styles.title}>Create Account</Text>
-                    <Text style={styles.subtitle}>Join NutriTiffin for delicious meals</Text>
+                    <Text style={styles.subtitle}>Join NutriTiffin for fresh home-cooked meals</Text>
                 </View>
 
                 <View style={styles.form}>
-                    <InputRow icon={<User {...INPUT_ICON_PROPS} />}>
+                    <FormField label="Username">
                         <TextInput
                             style={styles.input}
-                            placeholder="Username"
+                            placeholder="Choose a username"
                             placeholderTextColor={Colors.dark.textSecondary}
                             value={username}
                             onChangeText={setUsername}
                             autoCapitalize="none"
                         />
-                    </InputRow>
-                    <InputRow icon={<User {...INPUT_ICON_PROPS} />}>
+                    </FormField>
+                    <FormField label="Full Name">
                         <TextInput
                             style={styles.input}
-                            placeholder="Full Name"
+                            placeholder="Your full name"
                             placeholderTextColor={Colors.dark.textSecondary}
                             value={name}
                             onChangeText={setName}
                         />
-                    </InputRow>
-                    <InputRow icon={<Mail {...INPUT_ICON_PROPS} />}>
+                    </FormField>
+                    <FormField label="Email">
                         <TextInput
                             style={styles.input}
-                            placeholder="Email"
+                            placeholder="your@email.com"
                             placeholderTextColor={Colors.dark.textSecondary}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
                             autoCapitalize="none"
                         />
-                    </InputRow>
-                    <InputRow icon={<Phone {...INPUT_ICON_PROPS} />}>
+                    </FormField>
+                    <FormField label="Phone Number">
                         <TextInput
                             style={styles.input}
-                            placeholder="Phone Number (10 digits)"
+                            placeholder="10-digit phone number"
                             placeholderTextColor={Colors.dark.textSecondary}
                             value={phoneNumber}
                             onChangeText={(t) => setPhoneNumber(t.replace(/\D/g, '').slice(0, 10))}
                             keyboardType="phone-pad"
                             maxLength={10}
                         />
-                    </InputRow>
-                    <InputRow icon={<MapPin {...INPUT_ICON_PROPS} />}>
+                    </FormField>
+                    <FormField label="Address">
                         <TextInput
                             style={styles.input}
-                            placeholder="Address"
+                            placeholder="City, State, Country"
                             placeholderTextColor={Colors.dark.textSecondary}
                             value={address}
                             onChangeText={setAddress}
                         />
-                    </InputRow>
-                    <InputRow icon={<MapPin {...INPUT_ICON_PROPS} />}>
+                    </FormField>
+                    <FormField label="Pincode">
                         <TextInput
                             style={styles.input}
-                            placeholder="Pincode (6 digits)"
+                            placeholder="6-digit pincode"
                             placeholderTextColor={Colors.dark.textSecondary}
                             value={pincode}
                             onChangeText={(t) => setPincode(t.replace(/\D/g, '').slice(0, 6))}
                             keyboardType="number-pad"
                             maxLength={6}
                         />
-                    </InputRow>
-                    <InputRow icon={<Lock {...INPUT_ICON_PROPS} />}>
+                    </FormField>
+                    <FormField label="Password">
                         <TextInput
                             style={styles.input}
-                            placeholder="Password"
+                            placeholder="Create a password"
                             placeholderTextColor={Colors.dark.textSecondary}
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry
                         />
-                    </InputRow>
+                    </FormField>
 
                     <TouchableOpacity
                         style={styles.button}
@@ -197,17 +194,11 @@ export default function RegisterScreen() {
     );
 }
 
-function InputRow({
-    icon,
-    children,
-}: {
-    icon: React.ReactNode;
-    children: React.ReactNode;
-}) {
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
     return (
-        <View style={styles.inputContainer}>
-            <View style={styles.icon}>{icon}</View>
-            {children}
+        <View style={styles.fieldWrapper}>
+            <Text style={styles.fieldLabel}>{label}</Text>
+            <View style={styles.inputContainer}>{children}</View>
         </View>
     );
 }
@@ -220,39 +211,45 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingHorizontal: 24,
-        paddingVertical: 24,
-        paddingBottom: 40,
+        paddingTop: 48,
+        paddingBottom: 48,
     },
     header: {
         marginBottom: 32,
         alignItems: 'center',
     },
     title: {
-        fontSize: 32,
+        fontSize: 40,
         fontWeight: 'bold',
         color: Colors.dark.text,
         marginBottom: 8,
+        textAlign: 'center',
     },
     subtitle: {
         fontSize: 16,
         color: Colors.dark.textSecondary,
+        textAlign: 'center',
     },
     form: {
         width: '100%',
     },
+    fieldWrapper: {
+        marginBottom: 20,
+    },
+    fieldLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.dark.text,
+        marginBottom: 8,
+    },
     inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
         backgroundColor: Colors.dark.card,
         borderRadius: 12,
-        marginBottom: 12,
         paddingHorizontal: 16,
         height: 52,
+        justifyContent: 'center',
         borderWidth: 1,
         borderColor: Colors.dark.border,
-    },
-    icon: {
-        marginRight: 12,
     },
     input: {
         flex: 1,
