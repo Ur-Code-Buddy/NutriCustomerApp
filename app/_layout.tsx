@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, X } from 'lucide-react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
@@ -58,13 +58,25 @@ export default function RootLayout() {
           />
           <Stack.Screen
             name="cart"
-            options={{
+            options={({ navigation }) => ({
               presentation: 'modal',
               headerShown: true,
+              headerBackVisible: false,
               title: 'Your Cart',
               headerStyle: { backgroundColor: Colors.dark.card },
               headerTintColor: Colors.dark.text,
-            }}
+              headerLeftContainerStyle: styles.headerLeftContainer,
+              headerLeft: () => (
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  style={styles.headerBack}
+                  hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+                  activeOpacity={0.6}
+                >
+                  <X size={24} color={Colors.dark.text} strokeWidth={2} />
+                </TouchableOpacity>
+              ),
+            })}
           />
         </Stack>
         </InitializingGuard>
@@ -76,10 +88,14 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   headerLeftContainer: {
     justifyContent: 'center',
-    paddingLeft: 4,
+    alignItems: 'center',
+    paddingLeft: 8,
+    minWidth: 44,
   },
   headerBack: {
-    padding: 4,
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loader: {
     flex: 1,
