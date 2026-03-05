@@ -1,7 +1,7 @@
-import { Linking, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronDown, ChevronUp, Clock, MapPin, Phone, Plus, ShoppingCart } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useCart } from '../../context/CartContext';
 import { kitchenService } from '../../services/api';
@@ -144,14 +144,14 @@ export default function KitchenDetailsScreen() {
                                     {kitchen.details?.phone && (
                                         <TouchableOpacity
                                             style={styles.contactRow}
-                                            onPress={async () => {
-                                                const num = String(kitchen.details.phone).replace(/[^\d+]/g, '');
+                                            onPress={() => {
+                                                const raw = String(kitchen.details.phone);
+                                                const num = raw.replace(/[^\d+]/g, '');
                                                 if (!num) return;
-                                                try {
-                                                    await Linking.openURL(`tel:${num}`);
-                                                } catch (e) {
-                                                    Alert.alert('Unable to call', `Dial ${kitchen.details.phone} manually.`);
-                                                }
+                                                const url = num.startsWith('+') ? `tel:${num}` : `tel:+91${num}`;
+                                                Linking.openURL(url).catch(() =>
+                                                    Alert.alert('Unable to call', `Dial ${raw} manually.`)
+                                                );
                                             }}
                                             activeOpacity={0.7}
                                         >
@@ -159,6 +159,9 @@ export default function KitchenDetailsScreen() {
                                                 <Phone size={18} color={Colors.dark.primary} />
                                             </View>
                                             <Text style={styles.contactValue}>{kitchen.details.phone}</Text>
+                                            <View style={styles.callBadge}>
+                                                <Text style={styles.callBadgeText}>Call</Text>
+                                            </View>
                                         </TouchableOpacity>
                                     )}
                                     {kitchen.details?.address && (
@@ -300,6 +303,17 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 15,
         color: Colors.dark.text,
+    },
+    callBadge: {
+        backgroundColor: Colors.dark.primary,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    callBadgeText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: Colors.dark.primaryForeground,
     },
     hoursBlock: {
         marginTop: 4,

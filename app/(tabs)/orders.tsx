@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Linking, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { orderService } from '../../services/api';
 
@@ -82,6 +82,25 @@ export default function OrdersScreen() {
                         <Text style={styles.date}>Scheduled: {item.scheduled_for}</Text>
                     )}
                 </View>
+
+                {item.status?.toUpperCase() === 'OUT_FOR_DELIVERY' && item.delivery_driver && (
+                    <View style={styles.driverSection}>
+                        <Text style={styles.driverLabel}>Driver: {item.delivery_driver.name}</Text>
+                        <TouchableOpacity
+                            style={styles.callDriverBtn}
+                            onPress={() => {
+                                const num = String(item.delivery_driver.phone_number || '').replace(/[^\d+]/g, '');
+                                if (!num) return;
+                                const url = num.startsWith('+') ? `tel:${num}` : `tel:+91${num}`;
+                                Linking.openURL(url).catch(() =>
+                                    Alert.alert('Unable to call', `Dial ${item.delivery_driver.phone_number} manually.`)
+                                );
+                            }}
+                        >
+                            <Text style={styles.callDriverText}>Call driver</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <View style={styles.itemsContainer}>
                     {item.items?.map((orderItem: any, index: number) => (
@@ -211,6 +230,33 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginBottom: 12,
+    },
+    driverSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: 'rgba(48, 209, 88, 0.12)',
+        padding: 12,
+        borderRadius: 10,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(48, 209, 88, 0.3)',
+    },
+    driverLabel: {
+        fontSize: 14,
+        color: Colors.dark.text,
+        fontWeight: '500',
+    },
+    callDriverBtn: {
+        backgroundColor: Colors.dark.primary,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 8,
+    },
+    callDriverText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: Colors.dark.primaryForeground,
     },
     date: {
         fontSize: 12,
