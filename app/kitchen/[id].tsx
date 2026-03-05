@@ -1,7 +1,7 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Plus, ShoppingCart } from 'lucide-react-native';
+import { Linking, useLocalSearchParams, useRouter } from 'expo-router';
+import { ChevronDown, ChevronUp, Clock, MapPin, Phone, Plus, ShoppingCart } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useCart } from '../../context/CartContext';
 import { kitchenService } from '../../services/api';
@@ -11,6 +11,7 @@ export default function KitchenDetailsScreen() {
     const [kitchen, setKitchen] = useState<any>(null);
     const [menuItems, setMenuItems] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [detailsExpanded, setDetailsExpanded] = useState(false);
     // const [cart, setCart] = useState<{ [key: string]: number }>({}); // Removed local cart
     const { addToCart, count, cartItems, updateQuantity } = useCart(); // Use global cart
     const router = useRouter();
@@ -35,6 +36,23 @@ export default function KitchenDetailsScreen() {
 
     const handleAddToCart = async (item: any) => {
         await addToCart(item, 1, id as string);
+    };
+
+    const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const DAY_LABELS: Record<string, string> = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
+
+    const getOperatingHoursList = (hours: Record<string, { open?: string; close?: string }> | undefined) => {
+        if (!hours) return [];
+        return DAY_ORDER
+            .filter((day) => hours[day]?.open && hours[day]?.close)
+            .map((day) => ({ day: DAY_LABELS[day], time: `${hours[day].open}–${hours[day].close}` }));
+    };
+
+    const getHoursSummary = (list: { day: string; time: string }[]) => {
+        if (list.length === 0) return '';
+        const times = [...new Set(list.map((x) => x.time))];
+        if (times.length === 1) return `Mon–Sun: ${times[0]}`;
+        return `${list[0].day}–${list[list.length - 1].day}: varies`;
     };
 
     const getQuantity = (itemId: string) => {
@@ -98,7 +116,79 @@ export default function KitchenDetailsScreen() {
             {kitchen && (
                 <View style={styles.header}>
                     <Text style={styles.title}>{kitchen.name}</Text>
-                    <Text style={styles.subtitle}>{kitchen.description}</Text>
+                    {(kitchen.details?.description || kitchen.description) && (
+                        <Text style={styles.subtitle}>{kitchen.details?.description || kitchen.description}</Text>
+                    )}
+
+                    {(kitchen.details?.phone || kitchen.details?.address || getOperatingHoursList(kitchen.operating_hours).length > 0) && (
+                        <View style={styles.detailsSection}>
+                            <TouchableOpacity
+                                style={styles.detailsHeader}
+                                onPress={() => setDetailsExpanded((v) => !v)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.detailsTitle}>Kitchen details</Text>
+                                {!detailsExpanded && getOperatingHoursList(kitchen.operating_hours).length > 0 && (
+                                    <Text style={styles.detailsSummary} numberOfLines={1}>
+                                        {getHoursSummary(getOperatingHoursList(kitchen.operating_hours))}
+                                    </Text>
+                                )}
+                                {detailsExpanded ? (
+                                    <ChevronUp size={22} color={Colors.dark.textSecondary} />
+                                ) : (
+                                    <ChevronDown size={22} color={Colors.dark.textSecondary} />
+                                )}
+                            </TouchableOpacity>
+                            {detailsExpanded && (
+                                <View style={styles.detailsContent}>
+                                    {kitchen.details?.phone && (
+                                        <TouchableOpacity
+                                            style={styles.contactRow}
+                                            onPress={async () => {
+                                                const num = String(kitchen.details.phone).replace(/[^\d+]/g, '');
+                                                if (!num) return;
+                                                try {
+                                                    await Linking.openURL(`tel:${num}`);
+                                                } catch (e) {
+                                                    Alert.alert('Unable to call', `Dial ${kitchen.details.phone} manually.`);
+                                                }
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={styles.contactIcon}>
+                                                <Phone size={18} color={Colors.dark.primary} />
+                                            </View>
+                                            <Text style={styles.contactValue}>{kitchen.details.phone}</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    {kitchen.details?.address && (
+                                        <View style={styles.contactRow}>
+                                            <View style={styles.contactIcon}>
+                                                <MapPin size={18} color={Colors.dark.primary} />
+                                            </View>
+                                            <Text style={styles.contactValue} numberOfLines={2}>{kitchen.details.address}</Text>
+                                        </View>
+                                    )}
+                                    {getOperatingHoursList(kitchen.operating_hours).length > 0 && (
+                                        <View style={styles.hoursBlock}>
+                                            <View style={styles.hoursHeader}>
+                                                <Clock size={18} color={Colors.dark.primary} />
+                                                <Text style={styles.hoursTitle}>Hours</Text>
+                                            </View>
+                                            <View style={styles.hoursGrid}>
+                                                {getOperatingHoursList(kitchen.operating_hours).map(({ day, time }) => (
+                                                    <View key={day} style={styles.hoursRow}>
+                                                        <Text style={styles.hoursDay}>{day}</Text>
+                                                        <Text style={styles.hoursTime}>{time}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+                        </View>
+                    )}
                 </View>
             )}
 
@@ -138,21 +228,110 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.dark.background,
     },
     header: {
-        paddingHorizontal: 24,
-        paddingVertical: 16,
+        paddingHorizontal: 20,
+        paddingVertical: 20,
+        paddingBottom: 24,
         borderBottomWidth: 1,
         borderBottomColor: Colors.dark.border,
         backgroundColor: Colors.dark.card,
     },
     title: {
-        fontSize: 24,
+        fontSize: 26,
         fontWeight: 'bold',
         color: Colors.dark.text,
+        letterSpacing: 0.5,
     },
     subtitle: {
+        fontSize: 15,
+        color: Colors.dark.textSecondary,
+        marginTop: 6,
+        lineHeight: 22,
+    },
+    detailsSection: {
+        marginTop: 20,
+        backgroundColor: Colors.dark.background,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: Colors.dark.border,
+        overflow: 'hidden',
+    },
+    detailsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        gap: 12,
+    },
+    detailsTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: Colors.dark.text,
+    },
+    detailsSummary: {
+        flex: 1,
+        fontSize: 13,
+        color: Colors.dark.textSecondary,
+    },
+    detailsContent: {
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        gap: 12,
+    },
+    contactRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: Colors.dark.card,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: Colors.dark.border,
+    },
+    contactIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255, 107, 53, 0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    contactValue: {
+        flex: 1,
+        fontSize: 15,
+        color: Colors.dark.text,
+    },
+    hoursBlock: {
+        marginTop: 4,
+    },
+    hoursHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    hoursTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.dark.text,
+    },
+    hoursGrid: {
+        marginTop: 12,
+        gap: 8,
+    },
+    hoursRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    hoursDay: {
         fontSize: 14,
         color: Colors.dark.textSecondary,
-        marginTop: 4,
+    },
+    hoursTime: {
+        fontSize: 14,
+        color: Colors.dark.text,
+        fontWeight: '500',
     },
     listContent: {
         paddingHorizontal: 24,

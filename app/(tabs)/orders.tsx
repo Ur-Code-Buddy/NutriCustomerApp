@@ -30,27 +30,49 @@ export default function OrdersScreen() {
     }, []);
 
     const getStatusColor = (status: string) => {
-        switch (status.toLowerCase()) {
-            case 'completed':
-            case 'accepted':
+        switch (status?.toUpperCase()) {
+            case 'ACCEPTED':
+            case 'READY':
+            case 'PICKED_UP':
+            case 'OUT_FOR_DELIVERY':
+            case 'DELIVERED':
                 return Colors.dark.success;
-            case 'pending': return Colors.dark.primary;
-            case 'rejected': return Colors.dark.danger;
-            default: return Colors.dark.textSecondary;
+            case 'PENDING':
+                return Colors.dark.primary;
+            case 'REJECTED':
+                return Colors.dark.danger;
+            default:
+                return Colors.dark.textSecondary;
+        }
+    };
+
+    const getStatusLabel = (status: string) => {
+        switch (status?.toUpperCase()) {
+            case 'PENDING': return 'Pending';
+            case 'ACCEPTED': return 'Accepted';
+            case 'REJECTED': return 'Rejected';
+            case 'READY': return 'Ready for pickup';
+            case 'PICKED_UP': return 'Picked up';
+            case 'OUT_FOR_DELIVERY': return 'Out for delivery';
+            case 'DELIVERED': return 'Delivered';
+            default: return status || 'Unknown';
         }
     };
 
     const renderOrderItem = ({ item }: { item: any }) => {
-        const totalAmount = item.items?.reduce((sum: number, orderItem: any) => {
-            return sum + (Number(orderItem.snapshot_price) * orderItem.quantity);
-        }, 0) || 0;
+        const itemsSubtotal = item.items?.reduce((sum: number, o: any) =>
+            sum + Number(o.snapshot_price || 0) * (o.quantity || 0), 0) ?? 0;
+        const platformFee = Number(item.platform_fees) ?? 10;
+        const deliveryFee = Number(item.delivery_fees) ?? 20;
+        const totalPrice = Number(item.total_price) ?? itemsSubtotal + platformFee + deliveryFee;
+        const itemName = (o: any) => o.name ?? o.food_item?.name ?? 'Item';
 
         return (
             <View style={styles.card}>
                 <View style={styles.header}>
                     <Text style={styles.kitchenName}>{item.kitchen?.name || 'Unknown Kitchen'}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                        <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+                        <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{getStatusLabel(item.status)}</Text>
                     </View>
                 </View>
 
@@ -64,7 +86,7 @@ export default function OrdersScreen() {
                 <View style={styles.itemsContainer}>
                     {item.items?.map((orderItem: any, index: number) => (
                         <View key={index} style={styles.orderItemRow}>
-                            <Text style={styles.itemName}>{orderItem.quantity}x {orderItem.food_item?.name || 'Item'}</Text>
+                            <Text style={styles.itemName}>{orderItem.quantity}x {itemName(orderItem)}</Text>
                             <Text style={styles.itemPrice}>₹{(Number(orderItem.snapshot_price) * orderItem.quantity).toFixed(2)}</Text>
                         </View>
                     ))}
@@ -72,9 +94,23 @@ export default function OrdersScreen() {
 
                 <View style={styles.divider} />
 
+                <View style={styles.feeSection}>
+                    <View style={styles.feeRow}>
+                        <Text style={styles.feeLabel}>Items subtotal</Text>
+                        <Text style={styles.feeValue}>₹{itemsSubtotal.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.feeRow}>
+                        <Text style={styles.feeLabel}>Platform fee</Text>
+                        <Text style={styles.feeValue}>₹{platformFee}</Text>
+                    </View>
+                    <View style={styles.feeRow}>
+                        <Text style={styles.feeLabel}>Delivery fee</Text>
+                        <Text style={styles.feeValue}>₹{deliveryFee}</Text>
+                    </View>
+                </View>
                 <View style={styles.totalRow}>
                     <Text style={styles.totalLabel}>Total</Text>
-                    <Text style={styles.totalAmount}>₹{totalAmount.toFixed(2)}</Text>
+                    <Text style={styles.totalAmount}>₹{totalPrice.toFixed(2)}</Text>
                 </View>
             </View>
         );
@@ -200,6 +236,22 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: Colors.dark.border,
         marginBottom: 12,
+    },
+    feeSection: {
+        marginBottom: 8,
+    },
+    feeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    feeLabel: {
+        fontSize: 13,
+        color: Colors.dark.textSecondary,
+    },
+    feeValue: {
+        fontSize: 13,
+        color: Colors.dark.text,
     },
     totalRow: {
         flexDirection: 'row',

@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MapPin, Star } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { kitchenService } from '../../services/api';
 
@@ -45,8 +45,11 @@ export default function KitchensScreen() {
       activeOpacity={0.9}
     >
       <View style={styles.imagePlaceholder}>
-        {/* Placeholder for Kitchen Image if API provides one later */}
-        <Text style={styles.placeholderText}>{item.name.charAt(0)}</Text>
+        {item.image_url ? (
+          <Image source={{ uri: item.image_url }} style={styles.kitchenImage} resizeMode="cover" />
+        ) : (
+          <Text style={styles.placeholderText}>{item.name.charAt(0)}</Text>
+        )}
       </View>
       <View style={styles.cardContent}>
         <View style={styles.headerRow}>
@@ -58,10 +61,10 @@ export default function KitchensScreen() {
             </View>
           )}
         </View>
-        <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
+        <Text style={styles.description} numberOfLines={2}>{item.details?.description || item.description}</Text>
         <View style={styles.footerRow}>
           <MapPin size={14} color={Colors.dark.textSecondary} />
-          <Text style={styles.address}>{item.address}</Text>
+          <Text style={styles.address}>{item.details?.address || item.address || 'Address not available'}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -150,6 +153,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: Colors.dark.border,
+    overflow: 'hidden',
+  },
+  kitchenImage: {
+    width: '100%',
+    height: '100%',
   },
   placeholderText: {
     fontSize: 48,

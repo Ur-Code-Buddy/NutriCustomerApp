@@ -103,11 +103,27 @@ export default function CartScreen() {
         );
     }
 
+    const platformFee = 10;
+    const deliveryFee = 20;
+    const orderTotal = totalAmount + platformFee + deliveryFee;
+
     const footer = (
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
-            <View style={styles.totalRow}>
+            <View style={styles.feeRow}>
+                <Text style={styles.feeLabel}>Subtotal</Text>
+                <Text style={styles.feeValue}>₹{totalAmount.toFixed(2)}</Text>
+            </View>
+            <View style={styles.feeRow}>
+                <Text style={styles.feeLabel}>Platform fee</Text>
+                <Text style={styles.feeValue}>₹{platformFee}</Text>
+            </View>
+            <View style={styles.feeRow}>
+                <Text style={styles.feeLabel}>Delivery fee</Text>
+                <Text style={styles.feeValue}>₹{deliveryFee}</Text>
+            </View>
+            <View style={[styles.totalRow, styles.totalRowBorder]}>
                 <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalAmount}>₹{totalAmount.toFixed(2)}</Text>
+                <Text style={styles.totalAmount}>₹{orderTotal.toFixed(2)}</Text>
             </View>
             <TouchableOpacity
                 style={[styles.checkoutButton, submitting && styles.checkoutButtonDisabled]}
@@ -271,11 +287,31 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 20,
     },
+    feeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    feeLabel: {
+        fontSize: 14,
+        color: Colors.dark.textSecondary,
+    },
+    feeValue: {
+        fontSize: 14,
+        color: Colors.dark.text,
+    },
     totalRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 16,
+    },
+    totalRowBorder: {
+        marginTop: 8,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: Colors.dark.border,
     },
     totalLabel: {
         fontSize: 18,

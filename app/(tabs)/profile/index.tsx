@@ -1,11 +1,13 @@
-import { LogOut, Mail, MapPin, Phone, UserCircle } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { LogOut, Mail, MapPin, Pencil, Phone, UserCircle, Wallet } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Colors } from '../../constants/Colors';
-import { useAuth } from '../../context/AuthContext';
-import { userService } from '../../services/api';
+import { Colors } from '../../../constants/Colors';
+import { useAuth } from '../../../context/AuthContext';
+import { userService } from '../../../services/api';
 
 export default function ProfileScreen() {
+    const router = useRouter();
     const { signOut, user } = useAuth();
     const [profile, setProfile] = useState<any>(null);
     const [refreshing, setRefreshing] = useState(false);
@@ -17,7 +19,6 @@ export default function ProfileScreen() {
             setProfile(data);
         } catch (error) {
             console.log('Failed to fetch profile', error);
-            // Fallback to auth context user if available
             if (user) setProfile(user);
         } finally {
             setLoading(false);
@@ -58,6 +59,16 @@ export default function ProfileScreen() {
                             <Text style={styles.username}>{profile?.name || profile?.username || 'User'}</Text>
                             <Text style={styles.roleBadge}>{profile?.role || 'CLIENT'}</Text>
 
+                            {profile?.credits != null && (
+                                <View style={styles.creditsCard}>
+                                    <Wallet size={24} color={Colors.dark.primary} />
+                                    <View>
+                                        <Text style={styles.creditsLabel}>Credits</Text>
+                                        <Text style={styles.creditsAmount}>₹{profile.credits}</Text>
+                                    </View>
+                                </View>
+                            )}
+
                             <View style={styles.infoSection}>
                                 <View style={styles.infoRow}>
                                     <Mail size={18} color={Colors.dark.textSecondary} />
@@ -73,12 +84,25 @@ export default function ProfileScreen() {
                                         <Text style={styles.infoText}>{profile.address}</Text>
                                     </View>
                                 )}
+                                {profile?.pincode && (
+                                    <View style={styles.infoRow}>
+                                        <MapPin size={18} color={Colors.dark.textSecondary} />
+                                        <Text style={styles.infoText}>Pincode: {profile.pincode}</Text>
+                                    </View>
+                                )}
                             </View>
                         </>
                     )}
                 </View>
 
                 <View style={styles.actionSection}>
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => router.push('/(tabs)/profile/edit')}
+                    >
+                        <Pencil size={20} color={Colors.dark.primary} />
+                        <Text style={[styles.menuText, { color: Colors.dark.primary }]}>Edit Profile</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.menuItem} onPress={signOut}>
                         <LogOut size={20} color={Colors.dark.danger} />
                         <Text style={[styles.menuText, { color: Colors.dark.danger }]}>Sign Out</Text>
@@ -139,8 +163,30 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 12,
-        marginBottom: 24,
+        marginBottom: 16,
         overflow: 'hidden',
+    },
+    creditsCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: 'rgba(255, 107, 53, 0.1)',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 12,
+        marginBottom: 24,
+        width: '100%',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 107, 53, 0.3)',
+    },
+    creditsLabel: {
+        fontSize: 12,
+        color: Colors.dark.textSecondary,
+    },
+    creditsAmount: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: Colors.dark.primary,
     },
     infoSection: {
         width: '100%',
