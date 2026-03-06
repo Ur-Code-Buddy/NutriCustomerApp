@@ -23,6 +23,18 @@ export default function AuthLayout() {
                 name="email-verification-pending"
                 options={{ title: 'Verify Email', headerShown: false }}
             />
+            <Stack.Screen
+                name="phone-verify-otp"
+                options={{ title: 'Verify Phone', headerShown: false }}
+            />
+            <Stack.Screen
+                name="forgot-password"
+                options={{ title: 'Forgot Password', headerShown: false }}
+            />
+            <Stack.Screen
+                name="reset-password"
+                options={{ title: 'Reset Password', headerShown: false }}
+            />
         </Stack>
     );
 }

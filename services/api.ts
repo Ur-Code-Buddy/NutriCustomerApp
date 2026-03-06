@@ -62,6 +62,26 @@ export const authService = {
         const response = await api.post('/auth/check-email-verified', { email });
         return response.data;
     },
+    resendPhoneOtp: async (phone: string) => {
+        const response = await api.post('/auth/resend-phone-otp', { phone });
+        return response.data;
+    },
+    verifyPhone: async (phone: string, otp: string) => {
+        const response = await api.post('/auth/verify-phone', { phone, otp });
+        return response.data;
+    },
+    forgotPassword: async (email: string) => {
+        const response = await api.post('/auth/forgot-password', { email });
+        return response.data;
+    },
+    resetPassword: async (email: string, otp: string, newPassword: string) => {
+        const response = await api.post('/auth/reset-password', {
+            email,
+            otp,
+            new_password: newPassword,
+        });
+        return response.data;
+    },
     logout: async () => {
         await SecureStore.deleteItemAsync('access_token');
     }

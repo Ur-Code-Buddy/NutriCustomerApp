@@ -25,9 +25,9 @@ function isVerifiedResponse(data: any): boolean {
 }
 
 export default function EmailVerificationPendingScreen() {
-    const { email } = useLocalSearchParams<{ email: string }>();
+    const { email, phone } = useLocalSearchParams<{ email: string; phone?: string }>();
     const router = useRouter();
-    const { signIn, pendingCredentials, clearPendingCredentials } = useAuth();
+    const { pendingCredentials, clearPendingCredentials } = useAuth();
 
     const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SEC);
     const [resending, setResending] = useState(false);
@@ -63,13 +63,12 @@ export default function EmailVerificationPendingScreen() {
         try {
             const data = await authService.checkEmailVerified(email);
             if (isVerifiedResponse(data)) {
-                if (pendingCredentials) {
-                    await signIn({
-                        username: pendingCredentials.username,
-                        password: pendingCredentials.password,
+                setPolling(false);
+                if (phone) {
+                    router.replace({
+                        pathname: '/(auth)/phone-verify-otp',
+                        params: { email, phone },
                     });
-                    clearPendingCredentials();
-                    router.replace('/(tabs)');
                 } else {
                     clearPendingCredentials();
                     router.replace('/(auth)/login');
@@ -82,7 +81,7 @@ export default function EmailVerificationPendingScreen() {
             }
         }
         return false;
-    }, [email, pendingCredentials, signIn, clearPendingCredentials, router]);
+    }, [email, phone, clearPendingCredentials, router]);
 
     useEffect(() => {
         if (!email || !polling) return;
@@ -146,7 +145,7 @@ export default function EmailVerificationPendingScreen() {
                 </Text>
                 <Text style={styles.email}>{email}</Text>
                 <Text style={styles.hint}>
-                    Click the link to verify your account. You’ll be signed in automatically.
+                    Click the link to verify your email. Then verify your phone with the OTP sent via SMS.
                 </Text>
 
                 <View style={styles.actions}>

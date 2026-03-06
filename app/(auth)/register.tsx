@@ -69,7 +69,7 @@ export default function RegisterScreen() {
                 setPendingCredentials({ username: username.trim(), password });
                 router.replace({
                     pathname: '/(auth)/email-verification-pending',
-                    params: { email: result.email },
+                    params: { email: result.email, phone: phoneNumber.trim() },
                 });
             }
         } catch (error: any) {
