@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { emitAuthFailure } from '../lib/authFailure';
 
 const API_URL = 'https://backend.v1.nutritiffin.com'; // Replace with your backend URL if different
 
@@ -9,6 +10,21 @@ const api = axios.create({
         'Content-Type': 'application/json',
     },
 });
+
+// Response interceptor: on 401, clear auth storage and notify (handles expired/invalid tokens)
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+        if (error.response?.status === 401 && !originalRequest._retried) {
+            originalRequest._retried = true;
+            await SecureStore.deleteItemAsync('access_token');
+            await SecureStore.deleteItemAsync('user_data');
+            emitAuthFailure();
+        }
+        return Promise.reject(error);
+    }
+);
 
 // Request interceptor to add the auth token to every request
 api.interceptors.request.use(

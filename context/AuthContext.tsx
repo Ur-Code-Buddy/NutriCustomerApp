@@ -1,7 +1,8 @@
 import { useRouter, useSegments } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useCallback, useState } from 'react';
-import { authService, getAuthToken, setAuthToken } from '../services/api';
+import { onAuthFailure } from '../lib/authFailure';
+import { authService, getAuthToken, setAuthToken, userService } from '../services/api';
 
 export interface PendingCredentials {
     username: string;
@@ -65,25 +66,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     useEffect(() => {
+        const unregister = onAuthFailure(() => setUser(null));
+
         const checkAuth = async () => {
             try {
                 const token = await getAuthToken();
                 const userData = await SecureStore.getItemAsync('user_data');
                 if (token) {
-                    if (userData) {
-                        setUser(JSON.parse(userData));
-                    } else {
-                        setUser({ token });
+                    try {
+                        const profile = await userService.getProfile();
+                        setUser(profile);
+                        if (!userData) {
+                            await SecureStore.setItemAsync('user_data', JSON.stringify(profile));
+                        }
+                    } catch (err: any) {
+                        if (err?.response?.status === 401) {
+                            setUser(null);
+                        } else if (userData) {
+                            setUser(JSON.parse(userData));
+                        } else {
+                            setUser({ token });
+                        }
                     }
                 }
             } catch (error) {
                 console.error('Auth check failed:', error);
+                setUser(null);
             } finally {
                 setIsInitializing(false);
             }
         };
 
         checkAuth();
+        return unregister;
     }, []);
 
     // Navigation Protection - only run after initial auth check
@@ -101,17 +116,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 
     const signIn = async (credentials: any) => {
-        try {
-            const data = await authService.login(credentials);
-            await setAuthToken(data.access_token);
-            if (data.user) {
-                await SecureStore.setItemAsync('user_data', JSON.stringify(data.user));
-                setUser(data.user);
-            } else {
-                setUser({ token: data.access_token });
-            }
-        } catch (error) {
-            throw error;
+        const data = await authService.login(credentials);
+        if (!data?.access_token) {
+            throw new Error('Invalid credentials');
+        }
+        await setAuthToken(data.access_token);
+        if (data.user) {
+            await SecureStore.setItemAsync('user_data', JSON.stringify(data.user));
+            setUser(data.user);
+        } else {
+            setUser({ token: data.access_token });
         }
     };
 
