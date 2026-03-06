@@ -429,16 +429,19 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         borderWidth: 1,
         borderColor: Colors.dark.border,
-        paddingRight: 12,
+        paddingHorizontal: 16,
+        height: 52,
     },
     usernameInput: {
         flex: 1,
+        minWidth: 0,
         backgroundColor: 'transparent',
         borderWidth: 0,
-        paddingLeft: 16,
+        paddingLeft: 0,
+        paddingRight: 12,
     },
     usernameIcon: {
-        marginLeft: 8,
+        marginLeft: 0,
     },
     usernameError: {
         fontSize: 12,
@@ -451,6 +454,7 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
+        minWidth: 0,
         color: Colors.dark.text,
         fontSize: 16,
     },
