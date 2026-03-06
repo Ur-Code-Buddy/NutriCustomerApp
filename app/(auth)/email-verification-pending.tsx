@@ -118,11 +118,6 @@ export default function EmailVerificationPendingScreen() {
         }
     };
 
-    const handleChangeEmail = () => {
-        clearPendingCredentials();
-        router.replace('/(auth)/register');
-    };
-
     const handleGoToLogin = () => {
         clearPendingCredentials();
         router.replace('/(auth)/login');
@@ -167,14 +162,6 @@ export default function EmailVerificationPendingScreen() {
                         ) : (
                             <Text style={styles.btnPrimaryText}>Resend email</Text>
                         )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.btn, styles.btnSecondary]}
-                        onPress={handleChangeEmail}
-                        disabled={resendCooldown > 0}
-                    >
-                        <Text style={styles.btnSecondaryText}>Change email</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -252,15 +239,6 @@ const styles = StyleSheet.create({
         color: Colors.dark.primaryForeground,
         fontSize: 16,
         fontWeight: 'bold',
-    },
-    btnSecondary: {
-        backgroundColor: Colors.dark.card,
-        borderWidth: 1,
-        borderColor: Colors.dark.border,
-    },
-    btnSecondaryText: {
-        color: Colors.dark.text,
-        fontSize: 16,
     },
     btnGhost: {
         backgroundColor: 'transparent',

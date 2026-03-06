@@ -57,6 +57,9 @@ export default function ProfileScreen() {
                     ) : (
                         <>
                             <Text style={styles.username}>{profile?.name || profile?.username || 'User'}</Text>
+                            {profile?.username && (
+                                <Text style={styles.usernameHandle}>@{profile.username}</Text>
+                            )}
                             <Text style={styles.roleBadge}>{profile?.role || 'CLIENT'}</Text>
 
                             {profile?.credits != null && (
@@ -154,6 +157,11 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: Colors.dark.text,
         marginBottom: 4,
+    },
+    usernameHandle: {
+        fontSize: 16,
+        color: Colors.dark.textSecondary,
+        marginBottom: 8,
     },
     roleBadge: {
         fontSize: 12,
