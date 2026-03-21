@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useCallback, useState } from 'react';
 import { onAuthFailure } from '../lib/authFailure';
 import { authService, getAuthToken, setAuthToken, userService } from '../services/api';
+import { setupPushNotifications } from '../services/notifications';
 
 export interface PendingCredentials {
     username: string;
@@ -76,6 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     try {
                         const profile = await userService.getProfile();
                         setUser(profile);
+                        setupPushNotifications(token);
                         if (!userData) {
                             await SecureStore.setItemAsync('user_data', JSON.stringify(profile));
                         }
@@ -121,6 +123,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             throw new Error('Invalid credentials');
         }
         await setAuthToken(data.access_token);
+        setupPushNotifications(data.access_token);
         if (data.user) {
             await SecureStore.setItemAsync('user_data', JSON.stringify(data.user));
             setUser(data.user);

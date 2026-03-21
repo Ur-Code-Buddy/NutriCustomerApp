@@ -1,8 +1,9 @@
 import { ChevronLeft, X } from 'lucide-react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { setupNotificationChannel, setupNotificationListeners } from '../services/notifications';
 import { Colors } from '../constants/Colors';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
@@ -20,6 +21,14 @@ function InitializingGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    setupNotificationChannel();
+    const cleanup = setupNotificationListeners();
+    return () => {
+      cleanup();
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <CartProvider>
