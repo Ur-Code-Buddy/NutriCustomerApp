@@ -1,5 +1,6 @@
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { Check, X } from 'lucide-react-native';
+import { Check, MapPin, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -20,6 +21,29 @@ import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/api';
 
 const STEPS = 2;
+const LOCATION_TIMEOUT_MS = 20_000;
+
+function formatAddressFromPlacemark(a: Location.LocationGeocodedAddress): string {
+    if (a.formattedAddress?.trim()) {
+        return a.formattedAddress.trim();
+    }
+    const streetLine = [a.streetNumber, a.street].filter(Boolean).join(' ').trim();
+    const parts: string[] = [];
+    const push = (value: string | null | undefined) => {
+        const t = value?.trim();
+        if (t && !parts.includes(t)) {
+            parts.push(t);
+        }
+    };
+    push(streetLine || a.name || undefined);
+    push(a.district);
+    push(a.city);
+    push(a.subregion);
+    push(a.region);
+    push(a.postalCode);
+    push(a.country);
+    return parts.join(', ');
+}
 
 export default function RegisterScreen() {
     const [step, setStep] = useState(1);
@@ -34,6 +58,7 @@ export default function RegisterScreen() {
     const [pincode, setPincode] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [detectingLocation, setDetectingLocation] = useState(false);
 
     const { signUp, setPendingCredentials } = useAuth();
     const router = useRouter();
@@ -124,6 +149,106 @@ export default function RegisterScreen() {
     const handleBack = () => {
         if (step === 2) {
             setStep(1);
+        }
+    };
+
+    const handleDetectLocation = async () => {
+        if (detectingLocation) return;
+
+        setDetectingLocation(true);
+        try {
+            const servicesEnabled = await Location.hasServicesEnabledAsync();
+            if (!servicesEnabled) {
+                Alert.alert(
+                    'Location services off',
+                    'Turn on location services in your device settings, then try again. You can also type your address manually.'
+                );
+                return;
+            }
+
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== Location.PermissionStatus.GRANTED) {
+                Alert.alert(
+                    'Location permission needed',
+                    'Allow location access to detect your address, or enter your address manually.'
+                );
+                return;
+            }
+
+            let locationTimeoutId: ReturnType<typeof setTimeout> | undefined;
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                locationTimeoutId = setTimeout(() => reject(new Error('LOCATION_TIMEOUT')), LOCATION_TIMEOUT_MS);
+            });
+            let position: Location.LocationObject;
+            try {
+                position = await Promise.race([
+                    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+                    timeoutPromise,
+                ]);
+            } finally {
+                if (locationTimeoutId !== undefined) {
+                    clearTimeout(locationTimeoutId);
+                }
+            }
+
+            const results = await Location.reverseGeocodeAsync({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+            });
+
+            const first = results[0];
+            if (!first) {
+                Alert.alert(
+                    'Address not found',
+                    'We could not resolve an address for your location. Please enter your address manually.'
+                );
+                return;
+            }
+
+            const line = formatAddressFromPlacemark(first);
+            if (!line.trim()) {
+                Alert.alert(
+                    'Address not found',
+                    'We could not resolve an address for your location. Please enter your address manually.'
+                );
+                return;
+            }
+
+            setAddress(line);
+
+            const digits = first.postalCode?.replace(/\D/g, '') ?? '';
+            if (/^\d{6}$/.test(digits)) {
+                setPincode(digits);
+            }
+        } catch (err: unknown) {
+            if (err instanceof Error && err.message === 'LOCATION_TIMEOUT') {
+                Alert.alert(
+                    'Location timed out',
+                    'Getting your location took too long. Move to an area with a clearer signal, try again, or enter your address manually.'
+                );
+                return;
+            }
+
+            const message = err instanceof Error ? err.message : '';
+            const lower = message.toLowerCase();
+            if (
+                lower.includes('denied') ||
+                lower.includes('permission') ||
+                lower.includes('authorization')
+            ) {
+                Alert.alert(
+                    'Location permission needed',
+                    'Allow location access to detect your address, or enter your address manually.'
+                );
+                return;
+            }
+
+            Alert.alert(
+                'Could not get location',
+                'Something went wrong while fetching your location. Please try again or enter your address manually.'
+            );
+        } finally {
+            setDetectingLocation(false);
         }
     };
 
@@ -239,15 +364,38 @@ export default function RegisterScreen() {
                                     onChangeText={setName}
                                 />
                             </FormField>
-                            <FormField label="Address">
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="City, State, Country"
-                                    placeholderTextColor={Colors.dark.textSecondary}
-                                    value={address}
-                                    onChangeText={setAddress}
-                                />
-                            </FormField>
+                            <View style={styles.fieldWrapper}>
+                                <View style={styles.addressLabelRow}>
+                                    <Text style={[styles.fieldLabel, styles.addressFieldLabel]}>Address</Text>
+                                    <TouchableOpacity
+                                        style={styles.detectLocationButton}
+                                        onPress={handleDetectLocation}
+                                        disabled={detectingLocation}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Detect my location"
+                                    >
+                                        {detectingLocation ? (
+                                            <ActivityIndicator size="small" color={Colors.dark.primary} />
+                                        ) : (
+                                            <>
+                                                <MapPin size={16} color={Colors.dark.primary} />
+                                                <Text style={styles.detectLocationText}>Detect My Location</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={[styles.inputContainer, styles.addressInputContainer]}>
+                                    <TextInput
+                                        style={[styles.input, styles.addressInput]}
+                                        placeholder="City, State, Country"
+                                        placeholderTextColor={Colors.dark.textSecondary}
+                                        value={address}
+                                        onChangeText={setAddress}
+                                        multiline
+                                        textAlignVertical="top"
+                                    />
+                                </View>
+                            </View>
                             <FormField label="Pincode">
                                 <TextInput
                                     style={styles.input}
@@ -413,6 +561,30 @@ const styles = StyleSheet.create({
         color: Colors.dark.text,
         marginBottom: 8,
     },
+    addressLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginBottom: 8,
+    },
+    addressFieldLabel: {
+        marginBottom: 0,
+        flexShrink: 1,
+    },
+    detectLocationButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 4,
+        paddingHorizontal: 4,
+        minHeight: 28,
+    },
+    detectLocationText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.dark.primary,
+    },
     inputContainer: {
         backgroundColor: Colors.dark.card,
         borderRadius: 12,
@@ -421,6 +593,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: Colors.dark.border,
+    },
+    addressInputContainer: {
+        minHeight: 100,
+        height: undefined,
+        paddingVertical: 12,
+        alignItems: 'stretch',
+    },
+    addressInput: {
+        minHeight: 76,
     },
     usernameRow: {
         flexDirection: 'row',
