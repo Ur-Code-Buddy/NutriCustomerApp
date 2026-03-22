@@ -82,9 +82,20 @@ export default function OrderDetailScreen() {
     const statusColor = STATUS_COLORS[status] ?? Colors.dark.textSecondary;
     const itemsSubtotal = order.items?.reduce((s: number, o: any) =>
         s + Number(o.snapshot_price || 0) * (o.quantity || 0), 0) ?? 0;
-    const platformFee = Number(order.platform_fees) ?? 10;
-    const deliveryFee = Number(order.delivery_fees) ?? 20;
-    const totalPrice = Number(order.total_price) ?? itemsSubtotal + platformFee + deliveryFee;
+    const parseOptionalMoney = (v: unknown): number | null => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+    };
+    const platformFee = parseOptionalMoney(order.platform_fees);
+    const deliveryFee = parseOptionalMoney(order.delivery_fees);
+    const totalFromOrder = Number(order.total_price);
+    let totalPrice: number | null = null;
+    if (Number.isFinite(totalFromOrder)) {
+        totalPrice = totalFromOrder;
+    } else if (platformFee !== null && deliveryFee !== null) {
+        totalPrice = itemsSubtotal + platformFee + deliveryFee;
+    }
+    const formatMoney = (n: number | null) => (n !== null ? `₹${n.toFixed(2)}` : '—');
     const itemName = (o: any) => o.name ?? o.food_item?.name ?? 'Item';
     const kitchen = order.kitchen || {};
     const driver = order.delivery_driver;
@@ -170,15 +181,15 @@ export default function OrderDetailScreen() {
                     </View>
                     <View style={styles.feeRow}>
                         <Text style={styles.feeLabel}>Platform fee</Text>
-                        <Text style={styles.feeValue}>₹{platformFee}</Text>
+                        <Text style={styles.feeValue}>{formatMoney(platformFee)}</Text>
                     </View>
                     <View style={styles.feeRow}>
                         <Text style={styles.feeLabel}>Delivery fee</Text>
-                        <Text style={styles.feeValue}>₹{deliveryFee}</Text>
+                        <Text style={styles.feeValue}>{formatMoney(deliveryFee)}</Text>
                     </View>
                     <View style={[styles.feeRow, styles.totalRow]}>
                         <Text style={styles.totalLabel}>Total</Text>
-                        <Text style={styles.totalValue}>₹{totalPrice.toFixed(2)}</Text>
+                        <Text style={styles.totalValue}>{formatMoney(totalPrice)}</Text>
                     </View>
                 </View>
             </ScrollView>

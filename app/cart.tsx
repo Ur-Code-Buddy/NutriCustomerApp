@@ -1,20 +1,66 @@
 import { useRouter } from 'expo-router';
 import { CreditCard, Minus, Plus, Trash2 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors';
 import { useCart } from '../context/CartContext';
-import { orderService } from '../services/api';
+import {
+    chargesService,
+    getCachedPlatformCharges,
+    isValidPlatformCharges,
+    orderService,
+    type PlatformCharges,
+} from '../services/api';
 
 export default function CartScreen() {
     const { cartItems, kitchenId, totalAmount, updateQuantity, removeFromCart, clearCart } = useCart();
     const [submitting, setSubmitting] = useState(false);
+    const [charges, setCharges] = useState<PlatformCharges | null>(null);
+    const [chargesUi, setChargesUi] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
+    const fetchCharges = useCallback(async () => {
+        if (cartItems.length === 0) return;
+        const cached = getCachedPlatformCharges();
+        const canUseStale = isValidPlatformCharges(cached);
+        if (canUseStale) {
+            setCharges(cached);
+            setChargesUi('success');
+        } else {
+            setChargesUi('loading');
+            setCharges(null);
+        }
+        try {
+            const data = await chargesService.get();
+            if (!isValidPlatformCharges(data)) {
+                throw new Error('Invalid charges response');
+            }
+            setCharges(data);
+            setChargesUi('success');
+        } catch {
+            if (canUseStale) {
+                setCharges(cached);
+                setChargesUi('success');
+            } else {
+                setCharges(null);
+                setChargesUi('error');
+            }
+        }
+    }, [cartItems.length]);
+
+    useEffect(() => {
+        if (cartItems.length === 0) {
+            setCharges(null);
+            setChargesUi('idle');
+            return;
+        }
+        fetchCharges();
+    }, [cartItems.length, fetchCharges]);
+
     const handlePlaceOrder = async () => {
-        if (!kitchenId || cartItems.length === 0) return;
+        if (!kitchenId || cartItems.length === 0 || chargesUi !== 'success' || !charges) return;
 
         setSubmitting(true);
         try {
@@ -103,9 +149,20 @@ export default function CartScreen() {
         );
     }
 
-    const platformFee = 10;
-    const deliveryFee = 20;
-    const orderTotal = totalAmount + platformFee + deliveryFee;
+    const platformFee = charges ? Number(charges.platform_fees) : NaN;
+    const deliveryFee = charges ? Number(charges.delivery_fees) : NaN;
+    const feesReady = chargesUi === 'success' && charges && Number.isFinite(platformFee) && Number.isFinite(deliveryFee);
+    const orderTotal = feesReady ? totalAmount + platformFee + deliveryFee : NaN;
+
+    const feeValueContent = (amount: number) => {
+        if (chargesUi === 'loading' && !charges) {
+            return <ActivityIndicator size="small" color={Colors.dark.textSecondary} />;
+        }
+        if (chargesUi === 'error' || !Number.isFinite(amount)) {
+            return <Text style={styles.feeValueMuted}>—</Text>;
+        }
+        return <Text style={styles.feeValue}>₹{amount.toFixed(2)}</Text>;
+    };
 
     const footer = (
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
@@ -115,20 +172,37 @@ export default function CartScreen() {
             </View>
             <View style={styles.feeRow}>
                 <Text style={styles.feeLabel}>Platform fee</Text>
-                <Text style={styles.feeValue}>₹{platformFee}</Text>
+                {feeValueContent(platformFee)}
             </View>
             <View style={styles.feeRow}>
                 <Text style={styles.feeLabel}>Delivery fee</Text>
-                <Text style={styles.feeValue}>₹{deliveryFee}</Text>
+                {feeValueContent(deliveryFee)}
             </View>
             <View style={[styles.totalRow, styles.totalRowBorder]}>
                 <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalAmount}>₹{orderTotal.toFixed(2)}</Text>
+                {feesReady ? (
+                    <Text style={styles.totalAmount}>₹{orderTotal.toFixed(2)}</Text>
+                ) : chargesUi === 'loading' && !charges ? (
+                    <ActivityIndicator size="small" color={Colors.dark.primary} />
+                ) : (
+                    <Text style={styles.totalAmountMuted}>—</Text>
+                )}
             </View>
+            {chargesUi === 'error' && (
+                <View style={styles.chargesErrorBox}>
+                    <Text style={styles.chargesErrorText}>Couldn't load fees. Check your connection and try again.</Text>
+                    <TouchableOpacity onPress={fetchCharges} style={styles.retryButton} activeOpacity={0.85}>
+                        <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
             <TouchableOpacity
-                style={[styles.checkoutButton, submitting && styles.checkoutButtonDisabled]}
+                style={[
+                    styles.checkoutButton,
+                    (submitting || !feesReady) && styles.checkoutButtonDisabled,
+                ]}
                 onPress={handlePlaceOrder}
-                disabled={submitting}
+                disabled={submitting || !feesReady}
                 activeOpacity={0.85}
             >
                 {submitting ? (
@@ -301,6 +375,41 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: Colors.dark.text,
     },
+    feeValueMuted: {
+        fontSize: 14,
+        color: Colors.dark.textSecondary,
+    },
+    totalAmountMuted: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: Colors.dark.textSecondary,
+    },
+    chargesErrorBox: {
+        marginBottom: 12,
+        padding: 12,
+        borderRadius: 10,
+        backgroundColor: Colors.dark.background,
+        borderWidth: 1,
+        borderColor: Colors.dark.border,
+    },
+    chargesErrorText: {
+        fontSize: 13,
+        color: Colors.dark.textSecondary,
+        marginBottom: 10,
+        lineHeight: 18,
+    },
+    retryButton: {
+        alignSelf: 'flex-start',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        backgroundColor: Colors.dark.primary,
+    },
+    retryButtonText: {
+        color: Colors.dark.primaryForeground,
+        fontSize: 14,
+        fontWeight: '600',
+    },
     totalRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -332,7 +441,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     checkoutButtonDisabled: {
-        opacity: 0.8,
+        opacity: 0.45,
     },
     checkoutIcon: {
         marginRight: 10,

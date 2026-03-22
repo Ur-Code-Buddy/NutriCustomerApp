@@ -128,6 +128,35 @@ export const userService = {
     }
 };
 
+/** GET /charges — platform-wide fees (numbers in rupees). */
+export interface PlatformCharges {
+    platform_fees: number;
+    delivery_fees: number;
+    kitchen_fees?: number;
+}
+
+let platformChargesCache: PlatformCharges | null = null;
+
+export function isValidPlatformCharges(c: PlatformCharges | null | undefined): c is PlatformCharges {
+    if (!c) return false;
+    return Number.isFinite(Number(c.platform_fees)) && Number.isFinite(Number(c.delivery_fees));
+}
+
+export function getCachedPlatformCharges(): PlatformCharges | null {
+    return platformChargesCache;
+}
+
+export const chargesService = {
+    get: async (): Promise<PlatformCharges> => {
+        const response = await api.get<PlatformCharges>('/charges');
+        const data = response.data;
+        if (isValidPlatformCharges(data)) {
+            platformChargesCache = data;
+        }
+        return data;
+    },
+};
+
 export const kitchenService = {
     getAll: async () => {
         const response = await api.get('/kitchens');
