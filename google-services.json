@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "741542723679",
+    "project_id": "nutritiffin-58419",
+    "storage_bucket": "nutritiffin-58419.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:741542723679:android:4d80c012887efff7915bea",
+        "android_client_info": {
+          "package_name": "com.nutritiffin.customerapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHFnJtmO_VCpnpYpdbWlINCU6PvOpno1Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:741542723679:android:a6c64a5f0c0945bc915bea",
+        "android_client_info": {
+          "package_name": "com.nutritiffin.nutritiffin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHFnJtmO_VCpnpYpdbWlINCU6PvOpno1Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
