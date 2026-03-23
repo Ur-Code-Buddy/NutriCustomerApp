@@ -35,7 +35,7 @@ Built with **Expo** and **TypeScript**, this project demonstrates modern React N
 This project is structured for scalability and maintainability.
 
 ### **Core Stack**
-- **Framework**: [Expo SDK 52](https://expo.dev/) (Managed Workflow)
+- **Framework**: [Expo SDK 54](https://expo.dev/) (Managed Workflow; payments use a **development build** — see below)
 - **Language**: [TypeScript](https://www.typescriptlang.org/) (Strict typing for robustness)
 - **Navigation**: [Expo Router](https://docs.expo.dev/router/introduction/) (File-based routing v3)
 - **Networking**: [Axios](https://axios-http.com/) (Centralized API service with interceptors)
@@ -94,9 +94,9 @@ Follow these steps to run the project locally.
    npm install
    ```
 
-3. **Configure Environment**
-   - The API URL is configured in `services/api.ts`.
-   - Update `API_URL` if you are running a local backend server.
+3. **Configure environment**
+   - Optional: set `EXPO_PUBLIC_API_BASE_URL` (e.g. in a root `.env` file). If unset, the app uses production: `https://backend.v1.nutritiffin.com`.
+   - Never put Razorpay **key secret** in the client; checkout uses the **public key** returned by `POST /payments/initiate`.
 
 4. **Run the app**
    ```bash
@@ -108,13 +108,46 @@ Follow these steps to run the project locally.
 
 ---
 
+## Payments (Razorpay + NutriTiffin backend)
+
+Checkout uses the official [`react-native-razorpay`](https://github.com/razorpay/react-native-razorpay) native module. **Expo Go does not include it** — use a dev or production native build:
+
+```bash
+npx expo prebuild
+npx expo run:android
+# or: npx expo run:ios
+```
+
+### Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `EXPO_PUBLIC_API_BASE_URL` | No | API origin (default: `https://backend.v1.nutritiffin.com`). No secrets. |
+
+### API call sequence (authenticated `CLIENT` JWT)
+
+All requests send `Authorization: Bearer <access_token>` (handled in `services/api.ts`).
+
+1. **`POST /payments/initiate`** — Body matches a place-order payload: `kitchen_id`, `scheduled_for` (`YYYY-MM-DD`, 1–3 days ahead in the cart UI), `items: [{ food_item_id, quantity }]`.  
+   **Response:** `razorpayOrderId`, `publicKey` (Razorpay Key ID). Optional `amount` (paise) if the backend returns it; otherwise the app falls back to the same rupee total shown on the cart (subtotal + platform + delivery), in paise.
+
+2. **Razorpay Standard Checkout** — Native UI with `key`, `order_id`, `amount` (paise), and user prefill from profile.
+
+3. **`POST /payments/confirm`** — Body: `razorpayOrderId`, `razorpayPaymentId`, `razorpaySignature` from Razorpay success, plus **`originalDto` identical** to the initiate body. On transient network errors after a successful payment, the app retries confirm a few times (idempotent-friendly).
+
+4. **Orders UI** — Existing `GET /orders` and `GET /orders/:id` after success.
+
+**Legacy:** `POST /orders` remains in `orderService.create` for a non-payment path if you need it; the cart flow uses initiate → Razorpay → confirm.
+
+---
+
 ## 🔮 Future Roadmap & Improvements
 
 To demonstrate forward-thinking product development, here are planned enhancements:
 
 - [ ] **Push Notifications**: Integrate Expo Notifications for order status updates.
 - [ ] **Real-time Tracking**: utilize Maps API to track delivery partners.
-- [ ] **Payment Gateway**: Integrate Razorpay/Stripe for in-app payments.
+- [x] **Payment gateway**: Razorpay via initiate/confirm + native checkout (dev build).
 - [ ] **Review System**: Allow users to rate kitchens and dishes.
 - [ ] **Dark Mode Support**: Fully leverage the `Colors` constant for dynamic theme switching.
 

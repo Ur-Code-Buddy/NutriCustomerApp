@@ -2,7 +2,9 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { emitAuthFailure } from '../lib/authFailure';
 
-const API_URL = 'https://backend.v1.nutritiffin.com'; // Replace with your backend URL if different
+const API_URL =
+    (typeof process !== 'undefined' && process.env.EXPO_PUBLIC_API_BASE_URL) ||
+    'https://backend.v1.nutritiffin.com';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -185,6 +187,56 @@ export const orderService = {
         const response = await api.get(`/orders/${id}`);
         return response.data;
     }
+};
+
+/** Same shape as POST /orders — used for POST /payments/initiate and confirm `originalDto`. */
+export type PaymentOrderItemDto = { food_item_id: string; quantity: number };
+
+export type CreatePaymentOrderDto = {
+    kitchen_id: string;
+    scheduled_for: string;
+    items: PaymentOrderItemDto[];
+};
+
+export type PaymentInitiateResponse = {
+    razorpayOrderId: string;
+    publicKey: string;
+    /** Paise; when present, must match the Razorpay order — prefer over client-side totals. */
+    amount?: number;
+};
+
+export type PaymentConfirmBody = {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    originalDto: CreatePaymentOrderDto;
+};
+
+function normalizePaymentInitiateResponse(data: Record<string, unknown>): PaymentInitiateResponse {
+    const razorpayOrderId = (data.razorpayOrderId ?? data.razorpay_order_id) as string | undefined;
+    const publicKey = (data.publicKey ?? data.public_key) as string | undefined;
+    if (!razorpayOrderId || !publicKey) {
+        throw new Error('Invalid payment initiate response: missing razorpayOrderId or publicKey');
+    }
+    const rawAmount = data.amount ?? data.amount_paise ?? data.amountPaise;
+    const amount =
+        rawAmount === undefined || rawAmount === null ? undefined : Number(rawAmount);
+    return {
+        razorpayOrderId,
+        publicKey,
+        amount: Number.isFinite(amount) ? amount : undefined,
+    };
 }
+
+export const paymentService = {
+    initiate: async (dto: CreatePaymentOrderDto): Promise<PaymentInitiateResponse> => {
+        const response = await api.post<Record<string, unknown>>('/payments/initiate', dto);
+        return normalizePaymentInitiateResponse(response.data);
+    },
+    confirm: async (body: PaymentConfirmBody) => {
+        const response = await api.post('/payments/confirm', body);
+        return response.data;
+    },
+};
 
 export default api;

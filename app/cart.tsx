@@ -1,21 +1,53 @@
+import { isAxiosError } from 'axios';
 import { useRouter } from 'expo-router';
 import { CreditCard, Minus, Plus, Trash2 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors';
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { confirmPaymentWithRetry } from '../lib/paymentConfirmRetry';
+import { isUserCancelledRazorpayError, isRazorpayNativeAvailable, openRazorpayCheckout } from '../lib/razorpayCheckout';
 import {
     chargesService,
     getCachedPlatformCharges,
     isValidPlatformCharges,
-    orderService,
+    paymentService,
+    type CreatePaymentOrderDto,
     type PlatformCharges,
 } from '../services/api';
 
+function scheduledDateFromOffsetDays(offsetDays: 1 | 2 | 3): string {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function paymentErrorMessage(err: unknown): string {
+    if (isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; error?: string } | undefined;
+        if (data?.message) return data.message;
+        if (typeof data?.error === 'string') return data.error;
+        if (err.response?.status === 400) {
+            return 'Payment could not be verified. Your card may not have been charged — you can try again or contact support.';
+        }
+        if (err.message) return err.message;
+    }
+    if (err instanceof Error) return err.message;
+    return 'Something went wrong. Please try again.';
+}
+
 export default function CartScreen() {
+    const { user } = useAuth();
     const { cartItems, kitchenId, totalAmount, updateQuantity, removeFromCart, clearCart } = useCart();
     const [submitting, setSubmitting] = useState(false);
+    const [paymentPhase, setPaymentPhase] = useState<'idle' | 'initiate' | 'checkout' | 'confirm'>('idle');
+    const [scheduleOffsetDays, setScheduleOffsetDays] = useState<1 | 2 | 3>(1);
+    const pendingOrderDtoRef = useRef<CreatePaymentOrderDto | null>(null);
     const [charges, setCharges] = useState<PlatformCharges | null>(null);
     const [chargesUi, setChargesUi] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const router = useRouter();
@@ -59,41 +91,110 @@ export default function CartScreen() {
         fetchCharges();
     }, [cartItems.length, fetchCharges]);
 
-    const handlePlaceOrder = async () => {
+    const buildOrderDto = useCallback((): CreatePaymentOrderDto | null => {
+        if (!kitchenId || cartItems.length === 0) return null;
+        return {
+            kitchen_id: kitchenId,
+            scheduled_for: scheduledDateFromOffsetDays(scheduleOffsetDays),
+            items: cartItems.map(({ item, quantity }) => ({
+                food_item_id: item.id,
+                quantity,
+            })),
+        };
+    }, [kitchenId, cartItems, scheduleOffsetDays]);
+
+    const handlePayWithRazorpay = async () => {
+        if (!user) {
+            Alert.alert('Sign in required', 'Please log in to complete payment.');
+            return;
+        }
         if (!kitchenId || cartItems.length === 0 || chargesUi !== 'success' || !charges) return;
 
+        if (!isRazorpayNativeAvailable()) {
+            Alert.alert(
+                'Development build required',
+                'Razorpay needs native code. Create a dev build with:\n\nnpx expo prebuild\nnpx expo run:android\n(or run:ios)\n\nExpo Go does not include the Razorpay module.',
+            );
+            return;
+        }
+
+        const originalDto = buildOrderDto();
+        if (!originalDto) return;
+
+        const platformFee = Number(charges.platform_fees);
+        const deliveryFee = Number(charges.delivery_fees);
+        const orderTotalRupee = totalAmount + platformFee + deliveryFee;
+        const fallbackAmountPaise = Math.round(orderTotalRupee * 100);
+
         setSubmitting(true);
+        setPaymentPhase('initiate');
+        pendingOrderDtoRef.current = originalDto;
+
         try {
-            // Calculate tomorrow's date as YYYY-MM-DD
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const scheduledFor = tomorrow.toISOString().split('T')[0];
+            const initiated = await paymentService.initiate(originalDto);
+            const amountPaise =
+                initiated.amount !== undefined && Number.isFinite(initiated.amount)
+                    ? Math.round(initiated.amount)
+                    : fallbackAmountPaise;
 
-            const orderPayload = {
-                kitchen_id: kitchenId,
-                scheduled_for: scheduledFor,
-                items: cartItems.map(({ item, quantity }) => ({
-                    food_item_id: item.id,
-                    quantity
-                }))
-            };
+            setPaymentPhase('checkout');
+            const razorpayResult = await openRazorpayCheckout({
+                key: initiated.publicKey,
+                orderId: initiated.razorpayOrderId,
+                amountPaise,
+                description: `Order for ${originalDto.scheduled_for}`,
+                prefill: {
+                    email: user.email,
+                    contact: user.phone_number,
+                    name: user.name,
+                },
+                themeColor: Colors.dark.primary,
+            });
 
-            await orderService.create(orderPayload);
+            const dto = pendingOrderDtoRef.current;
+            if (!dto) {
+                throw new Error('Checkout session expired. Please try again.');
+            }
+
+            setPaymentPhase('confirm');
+            const created = (await confirmPaymentWithRetry({
+                razorpayOrderId: razorpayResult.razorpay_order_id,
+                razorpayPaymentId: razorpayResult.razorpay_payment_id,
+                razorpaySignature: razorpayResult.razorpay_signature,
+                originalDto: dto,
+            })) as { id?: string } | undefined;
+
+            pendingOrderDtoRef.current = null;
             await clearCart();
 
-            Alert.alert('Success', 'Order placed successfully!', [
-                {
-                    text: 'OK',
-                    onPress: () => {
-                        // Use replace to prevent stacking issues
-                        router.replace('/(tabs)/orders');
-                    }
-                }
-            ]);
-        } catch (error: any) {
+            const rawId = created && typeof created === 'object' ? (created as { id?: string }).id : undefined;
+            const orderId = typeof rawId === 'string' ? rawId : null;
+            Alert.alert(
+                'Payment successful',
+                'Your order is confirmed.',
+                orderId
+                    ? [
+                          { text: 'View order', onPress: () => router.replace(`/order/${orderId}`) },
+                          { text: 'All orders', onPress: () => router.replace('/(tabs)/orders') },
+                      ]
+                    : [{ text: 'View orders', onPress: () => router.replace('/(tabs)/orders') }],
+            );
+        } catch (error: unknown) {
             console.error(error);
-            Alert.alert('Error', error.response?.data?.message || 'Failed to place order');
+            if (isUserCancelledRazorpayError(error)) {
+                // User closed checkout — no alert noise
+            } else {
+                const msg = paymentErrorMessage(error);
+                Alert.alert('Payment', msg, [
+                    { text: 'OK', style: 'cancel' },
+                    {
+                        text: 'Contact support',
+                        onPress: () => router.push('/(tabs)/profile'),
+                    },
+                ]);
+            }
         } finally {
+            setPaymentPhase('idle');
             setSubmitting(false);
         }
     };
@@ -190,27 +291,62 @@ export default function CartScreen() {
             </View>
             {chargesUi === 'error' && (
                 <View style={styles.chargesErrorBox}>
-                    <Text style={styles.chargesErrorText}>Couldn't load fees. Check your connection and try again.</Text>
+                    <Text style={styles.chargesErrorText}>Could not load fees. Check your connection and try again.</Text>
                     <TouchableOpacity onPress={fetchCharges} style={styles.retryButton} activeOpacity={0.85}>
                         <Text style={styles.retryButtonText}>Retry</Text>
                     </TouchableOpacity>
                 </View>
             )}
+            <Text style={styles.scheduleLabel}>Delivery date</Text>
+            <View style={styles.scheduleRow}>
+                {([1, 2, 3] as const).map((d) => {
+                    const label =
+                        d === 1 ? 'Tomorrow' : d === 2 ? 'In 2 days' : 'In 3 days';
+                    const selected = scheduleOffsetDays === d;
+                    return (
+                        <TouchableOpacity
+                            key={d}
+                            style={[styles.scheduleChip, selected && styles.scheduleChipSelected]}
+                            onPress={() => setScheduleOffsetDays(d)}
+                            disabled={submitting}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={[styles.scheduleChipText, selected && styles.scheduleChipTextSelected]}>
+                                {label}
+                            </Text>
+                            <Text style={[styles.scheduleChipSub, selected && styles.scheduleChipSubSelected]}>
+                                {scheduledDateFromOffsetDays(d)}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
             <TouchableOpacity
                 style={[
                     styles.checkoutButton,
                     (submitting || !feesReady) && styles.checkoutButtonDisabled,
                 ]}
-                onPress={handlePlaceOrder}
+                onPress={handlePayWithRazorpay}
                 disabled={submitting || !feesReady}
                 activeOpacity={0.85}
             >
                 {submitting ? (
-                    <ActivityIndicator color={Colors.dark.primaryForeground} />
+                    <View style={styles.checkoutLoadingRow}>
+                        <ActivityIndicator color={Colors.dark.primaryForeground} />
+                        <Text style={styles.checkoutLoadingText}>
+                            {paymentPhase === 'initiate'
+                                ? 'Starting payment…'
+                                : paymentPhase === 'confirm'
+                                  ? 'Confirming order…'
+                                  : paymentPhase === 'checkout'
+                                    ? 'Opening checkout…'
+                                    : 'Please wait…'}
+                        </Text>
+                    </View>
                 ) : (
                     <>
                         <CreditCard color={Colors.dark.primaryForeground} size={20} style={styles.checkoutIcon} />
-                        <Text style={styles.checkoutText}>Place Order</Text>
+                        <Text style={styles.checkoutText}>Pay with Razorpay</Text>
                     </>
                 )}
             </TouchableOpacity>
@@ -450,5 +586,57 @@ const styles = StyleSheet.create({
         color: Colors.dark.primaryForeground,
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    checkoutLoadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    checkoutLoadingText: {
+        color: Colors.dark.primaryForeground,
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    scheduleLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.dark.textSecondary,
+        marginBottom: 8,
+    },
+    scheduleRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 16,
+    },
+    scheduleChip: {
+        flex: 1,
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderRadius: 10,
+        backgroundColor: Colors.dark.background,
+        borderWidth: 1,
+        borderColor: Colors.dark.border,
+    },
+    scheduleChipSelected: {
+        borderColor: Colors.dark.primary,
+        backgroundColor: Colors.dark.card,
+    },
+    scheduleChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: Colors.dark.textSecondary,
+        textAlign: 'center',
+    },
+    scheduleChipTextSelected: {
+        color: Colors.dark.primary,
+    },
+    scheduleChipSub: {
+        fontSize: 11,
+        color: Colors.dark.textSecondary,
+        textAlign: 'center',
+        marginTop: 4,
+    },
+    scheduleChipSubSelected: {
+        color: Colors.dark.text,
     },
 });
