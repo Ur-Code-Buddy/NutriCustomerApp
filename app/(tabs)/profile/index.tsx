@@ -1,10 +1,23 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { LogOut, Mail, MapPin, Pencil, Phone, UserCircle, Wallet } from 'lucide-react-native';
+import {
+    ChevronRight,
+    FileText,
+    LogOut,
+    Mail,
+    MapPin,
+    Pencil,
+    Phone,
+    RefreshCw,
+    Shield,
+    UserCircle,
+    Wallet,
+} from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import { useAuth } from '../../../context/AuthContext';
 import { userService } from '../../../services/api';
+import { LEGAL_SLUGS } from '../../../constants/legalDocuments';
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -108,7 +121,38 @@ export default function ProfileScreen() {
                         <Pencil size={20} color={Colors.dark.primary} />
                         <Text style={[styles.menuText, { color: Colors.dark.primary }]}>Edit Profile</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.menuItem} onPress={signOut}>
+                </View>
+
+                <Text style={styles.sectionLabel}>Legal</Text>
+                <View style={styles.actionSection}>
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => router.push(`/(tabs)/profile/legal/${LEGAL_SLUGS.PRIVACY}`)}
+                    >
+                        <Shield size={20} color={Colors.dark.textSecondary} />
+                        <Text style={styles.menuText}>Privacy Policy</Text>
+                        <ChevronRight size={20} color={Colors.dark.muted} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => router.push(`/(tabs)/profile/legal/${LEGAL_SLUGS.TERMS}`)}
+                    >
+                        <FileText size={20} color={Colors.dark.textSecondary} />
+                        <Text style={styles.menuText}>Terms & Conditions</Text>
+                        <ChevronRight size={20} color={Colors.dark.muted} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.menuItem, styles.menuItemLast]}
+                        onPress={() => router.push(`/(tabs)/profile/legal/${LEGAL_SLUGS.REFUND}`)}
+                    >
+                        <RefreshCw size={20} color={Colors.dark.textSecondary} />
+                        <Text style={styles.menuText}>Refund & Cancellation</Text>
+                        <ChevronRight size={20} color={Colors.dark.muted} />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={[styles.actionSection, styles.signOutSection]}>
+                    <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={signOut}>
                         <LogOut size={20} color={Colors.dark.danger} />
                         <Text style={[styles.menuText, { color: Colors.dark.danger }]}>Sign Out</Text>
                     </TouchableOpacity>
@@ -219,6 +263,15 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: Colors.dark.border,
     },
+    sectionLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: Colors.dark.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.6,
+        marginBottom: 10,
+        marginTop: 8,
+    },
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -226,9 +279,17 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: Colors.dark.border,
     },
+    menuItemLast: {
+        borderBottomWidth: 0,
+    },
     menuText: {
         fontSize: 16,
         marginLeft: 12,
         fontWeight: '500',
+        color: Colors.dark.text,
+        flex: 1,
+    },
+    signOutSection: {
+        marginTop: 16,
     },
 });
