@@ -10,7 +10,17 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nutritiffin.customerapp"
+      "bundleIdentifier": "com.nutritiffin.customerapp",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "tez",
+          "gpay",
+          "phonepe",
+          "paytmmp",
+          "bhim",
+          "upi"
+        ]
+      }
     },
     "android": {
       "package": "com.nutritiffin.customerapp",
@@ -33,6 +43,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/withPaymentAppQueries.js",
       "expo-router",
       [
         "expo-location",
@@ -61,7 +72,8 @@
       "router": {},
       "eas": {
         "projectId": "e9150976-84fd-4f21-abc0-12049d3cbc52"
-      }
+      },
+      "merchantUpiVpa": ""
     }
   }
 }

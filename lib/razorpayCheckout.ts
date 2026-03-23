@@ -25,6 +25,13 @@ export function isRazorpayNativeAvailable(): boolean {
   return !!NativeModules.RNRazorpayCheckout;
 }
 
+export type RazorpayMethodRestriction = {
+  upi?: boolean;
+  card?: boolean;
+  netbanking?: boolean;
+  wallet?: boolean;
+};
+
 export type OpenRazorpayParams = {
   key: string;
   orderId: string;
@@ -34,6 +41,12 @@ export type OpenRazorpayParams = {
   description?: string;
   prefill?: { email?: string; contact?: string; name?: string };
   themeColor?: string;
+  /** Restrict checkout to specific instruments (Standard Checkout). */
+  method?: RazorpayMethodRestriction;
+  /** UPI collect: payer VPA. */
+  upiVpa?: string;
+  /** Extra keys forwarded to the native Razorpay options object (e.g. Android `upi_app_package_name`). */
+  nativeExtras?: Record<string, unknown>;
 };
 
 /**
@@ -64,6 +77,16 @@ export async function openRazorpayCheckout(params: OpenRazorpayParams): Promise<
     prefill: params.prefill ?? {},
     theme: { color: params.themeColor ?? '#22c55e' },
   };
+
+  if (params.method) {
+    options.method = params.method;
+  }
+  if (params.upiVpa) {
+    options.vpa = params.upiVpa;
+  }
+  if (params.nativeExtras) {
+    Object.assign(options, params.nativeExtras);
+  }
 
   const raw = (await RazorpayCheckout.open(options)) as Record<string, unknown>;
   return normalizeSuccess(raw);

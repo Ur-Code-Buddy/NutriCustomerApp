@@ -8,7 +8,8 @@ import { Colors } from '../constants/Colors';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { confirmPaymentWithRetry } from '../lib/paymentConfirmRetry';
-import { isUserCancelledRazorpayError, isRazorpayNativeAvailable, openRazorpayCheckout } from '../lib/razorpayCheckout';
+import { PaymentMethodSheet, type PaymentMethodSheetHandle } from '../components/payment/PaymentMethodSheet';
+import { isRazorpayNativeAvailable } from '../lib/razorpayCheckout';
 import {
     chargesService,
     getCachedPlatformCharges,
@@ -48,6 +49,7 @@ export default function CartScreen() {
     const [paymentPhase, setPaymentPhase] = useState<'idle' | 'initiate' | 'checkout' | 'confirm'>('idle');
     const [scheduleOffsetDays, setScheduleOffsetDays] = useState<1 | 2 | 3>(1);
     const pendingOrderDtoRef = useRef<CreatePaymentOrderDto | null>(null);
+    const paymentSheetRef = useRef<PaymentMethodSheetHandle>(null);
     const [charges, setCharges] = useState<PlatformCharges | null>(null);
     const [chargesUi, setChargesUi] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const router = useRouter();
@@ -103,6 +105,11 @@ export default function CartScreen() {
         };
     }, [kitchenId, cartItems, scheduleOffsetDays]);
 
+    const finishCheckoutUi = () => {
+        setPaymentPhase('idle');
+        setSubmitting(false);
+    };
+
     const handlePayWithRazorpay = async () => {
         if (!user) {
             Alert.alert('Sign in required', 'Please log in to complete payment.');
@@ -138,9 +145,9 @@ export default function CartScreen() {
                     : fallbackAmountPaise;
 
             setPaymentPhase('checkout');
-            const razorpayResult = await openRazorpayCheckout({
-                key: initiated.publicKey,
-                orderId: initiated.razorpayOrderId,
+            paymentSheetRef.current?.open({
+                publicKey: initiated.publicKey,
+                razorpayOrderId: initiated.razorpayOrderId,
                 amountPaise,
                 description: `Order for ${originalDto.scheduled_for}`,
                 prefill: {
@@ -150,52 +157,18 @@ export default function CartScreen() {
                 },
                 themeColor: Colors.dark.primary,
             });
-
-            const dto = pendingOrderDtoRef.current;
-            if (!dto) {
-                throw new Error('Checkout session expired. Please try again.');
-            }
-
-            setPaymentPhase('confirm');
-            const created = (await confirmPaymentWithRetry({
-                razorpayOrderId: razorpayResult.razorpay_order_id,
-                razorpayPaymentId: razorpayResult.razorpay_payment_id,
-                razorpaySignature: razorpayResult.razorpay_signature,
-                originalDto: dto,
-            })) as { id?: string } | undefined;
-
-            pendingOrderDtoRef.current = null;
-            await clearCart();
-
-            const rawId = created && typeof created === 'object' ? (created as { id?: string }).id : undefined;
-            const orderId = typeof rawId === 'string' ? rawId : null;
-            Alert.alert(
-                'Payment successful',
-                'Your order is confirmed.',
-                orderId
-                    ? [
-                          { text: 'View order', onPress: () => router.replace(`/order/${orderId}`) },
-                          { text: 'All orders', onPress: () => router.replace('/(tabs)/orders') },
-                      ]
-                    : [{ text: 'View orders', onPress: () => router.replace('/(tabs)/orders') }],
-            );
         } catch (error: unknown) {
             console.error(error);
-            if (isUserCancelledRazorpayError(error)) {
-                // User closed checkout — no alert noise
-            } else {
-                const msg = paymentErrorMessage(error);
-                Alert.alert('Payment', msg, [
-                    { text: 'OK', style: 'cancel' },
-                    {
-                        text: 'Contact support',
-                        onPress: () => router.push('/(tabs)/profile'),
-                    },
-                ]);
-            }
-        } finally {
-            setPaymentPhase('idle');
-            setSubmitting(false);
+            pendingOrderDtoRef.current = null;
+            const msg = paymentErrorMessage(error);
+            Alert.alert('Payment', msg, [
+                { text: 'OK', style: 'cancel' },
+                {
+                    text: 'Contact support',
+                    onPress: () => router.push('/(tabs)/profile'),
+                },
+            ]);
+            finishCheckoutUi();
         }
     };
 
@@ -234,21 +207,6 @@ export default function CartScreen() {
             </View>
         </View>
     );
-
-    if (cartItems.length === 0) {
-        return (
-            <View style={styles.centered}>
-                <Text style={styles.emptyText}>Your cart is empty</Text>
-                <TouchableOpacity
-                    style={styles.browsingButton}
-                    onPress={() => router.back()}
-                    activeOpacity={0.85}
-                >
-                    <Text style={styles.browsingButtonText}>Start Browsing</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
 
     const platformFee = charges ? Number(charges.platform_fees) : NaN;
     const deliveryFee = charges ? Number(charges.delivery_fees) : NaN;
@@ -339,22 +297,108 @@ export default function CartScreen() {
                                 : paymentPhase === 'confirm'
                                   ? 'Confirming order…'
                                   : paymentPhase === 'checkout'
-                                    ? 'Opening checkout…'
+                                    ? 'Choose payment method…'
                                     : 'Please wait…'}
                         </Text>
                     </View>
                 ) : (
                     <>
                         <CreditCard color={Colors.dark.primaryForeground} size={20} style={styles.checkoutIcon} />
-                        <Text style={styles.checkoutText}>Pay with Razorpay</Text>
+                        <Text style={styles.checkoutText}>Proceed to Payment</Text>
                     </>
                 )}
             </TouchableOpacity>
         </View>
     );
 
+    const paymentSheet = (
+            <PaymentMethodSheet
+                ref={paymentSheetRef}
+                onPaid={async (razorpayResult) => {
+                    try {
+                        const dto = pendingOrderDtoRef.current;
+                        if (!dto) {
+                            throw new Error('Checkout session expired. Please try again.');
+                        }
+
+                        setPaymentPhase('confirm');
+                        const created = (await confirmPaymentWithRetry({
+                            razorpayOrderId: razorpayResult.razorpay_order_id,
+                            razorpayPaymentId: razorpayResult.razorpay_payment_id,
+                            razorpaySignature: razorpayResult.razorpay_signature,
+                            originalDto: dto,
+                        })) as { id?: string } | undefined;
+
+                        pendingOrderDtoRef.current = null;
+                        await clearCart();
+
+                        const rawId = created && typeof created === 'object' ? (created as { id?: string }).id : undefined;
+                        const orderId = typeof rawId === 'string' ? rawId : null;
+                        Alert.alert(
+                            'Payment successful',
+                            'Your order is confirmed.',
+                            orderId
+                                ? [
+                                      { text: 'View order', onPress: () => router.replace(`/order/${orderId}`) },
+                                      { text: 'All orders', onPress: () => router.replace('/(tabs)/orders') },
+                                  ]
+                                : [{ text: 'View orders', onPress: () => router.replace('/(tabs)/orders') }],
+                        );
+                    } catch (error: unknown) {
+                        console.error(error);
+                        const msg = paymentErrorMessage(error);
+                        Alert.alert('Payment', msg, [
+                            { text: 'OK', style: 'cancel' },
+                            {
+                                text: 'Contact support',
+                                onPress: () => router.push('/(tabs)/profile'),
+                            },
+                        ]);
+                    } finally {
+                        finishCheckoutUi();
+                    }
+                }}
+                onCheckoutError={(error: unknown) => {
+                    console.error(error);
+                    const msg = paymentErrorMessage(error);
+                    Alert.alert('Payment', msg, [
+                        { text: 'OK', style: 'cancel' },
+                        {
+                            text: 'Contact support',
+                            onPress: () => router.push('/(tabs)/profile'),
+                        },
+                    ]);
+                    finishCheckoutUi();
+                }}
+                onUserCancelledRazorpay={() => finishCheckoutUi()}
+                onSheetClosed={() => {
+                    pendingOrderDtoRef.current = null;
+                    finishCheckoutUi();
+                }}
+            />
+    );
+
+    if (cartItems.length === 0) {
+        return (
+            <>
+                {paymentSheet}
+                <View style={styles.centered}>
+                    <Text style={styles.emptyText}>Your cart is empty</Text>
+                    <TouchableOpacity
+                        style={styles.browsingButton}
+                        onPress={() => router.back()}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={styles.browsingButtonText}>Start Browsing</Text>
+                    </TouchableOpacity>
+                </View>
+            </>
+        );
+    }
+
     return (
         <View style={styles.container}>
+            {paymentSheet}
             <FlatList
                 data={cartItems}
                 renderItem={renderCartItem}

@@ -30,11 +30,21 @@ module.exports = ({ config }) => {
     }
   }
 
+  const merchantUpiVpa =
+    (typeof process.env.EXPO_PUBLIC_MERCHANT_UPI_VPA === 'string' &&
+      process.env.EXPO_PUBLIC_MERCHANT_UPI_VPA.trim()) ||
+    config.extra?.merchantUpiVpa ||
+    '';
+
   return {
     ...config,
     android: {
       ...config.android,
       googleServicesFile,
+    },
+    extra: {
+      ...config.extra,
+      merchantUpiVpa,
     },
   };
 };
