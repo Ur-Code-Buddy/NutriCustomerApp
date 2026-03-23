@@ -1,7 +1,7 @@
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Platform,
   Pressable,
@@ -9,8 +9,14 @@ import {
   Text,
   View,
 } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors';
+import {
+  PILL_TAB_BAR_BOTTOM_GAP,
+  PILL_TAB_BAR_HEIGHT,
+} from '../constants/tabBarLayout';
+import { useTabBarScroll } from '../context/TabBarScrollContext';
 
 const TAB_BAR_COLORS = {
   surfaceElevated: Colors.dark.card,
@@ -30,12 +36,22 @@ const TAB_ICONS: Record<
 
 export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { tabBarTranslateY, resetScrollTracking } = useTabBarScroll();
+
+  useEffect(() => {
+    resetScrollTracking();
+  }, [state.index, resetScrollTracking]);
+
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: tabBarTranslateY.value }],
+  }));
 
   return (
-    <View
+    <Animated.View
       style={[
         styles.container,
-        { bottom: insets.bottom + 10 },
+        { bottom: insets.bottom + PILL_TAB_BAR_BOTTOM_GAP },
+        animatedContainerStyle,
       ]}
       pointerEvents="box-none"
     >
@@ -105,7 +121,7 @@ export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps
           );
         })}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -121,7 +137,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     width: '85%',
-    height: 65,
+    height: PILL_TAB_BAR_HEIGHT,
     paddingVertical: 8,
     paddingHorizontal: 16,
     backgroundColor: TAB_BAR_COLORS.surfaceElevated,

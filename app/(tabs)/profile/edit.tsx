@@ -14,10 +14,18 @@ import {
     View,
 } from 'react-native';
 import { Colors } from '../../../constants/Colors';
+import {
+    useTabBarScrollProps,
+    useTabBarScrollResetOnFocus,
+} from '../../../context/TabBarScrollContext';
+import { useTabBarContentPadding } from '../../../hooks/useTabBarContentPadding';
 import { userService } from '../../../services/api';
 
 export default function EditProfileScreen() {
     const router = useRouter();
+    const tabBarScrollProps = useTabBarScrollProps();
+    const tabBarPadBottom = useTabBarContentPadding();
+    useTabBarScrollResetOnFocus();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [currentPassword, setCurrentPassword] = useState('');
@@ -105,7 +113,11 @@ export default function EditProfileScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={80}
             >
-                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+                <ScrollView
+                    contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarPadBottom }]}
+                    keyboardShouldPersistTaps="handled"
+                    {...tabBarScrollProps}
+                >
                     <Text style={styles.label}>Current password</Text>
                     <TextInput
                         style={styles.input}
@@ -194,7 +206,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 24,
-        paddingBottom: 40,
     },
     label: {
         fontSize: 14,

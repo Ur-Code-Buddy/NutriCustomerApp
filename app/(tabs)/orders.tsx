@@ -2,10 +2,14 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Linking, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { useTabBarScrollProps } from '../../context/TabBarScrollContext';
+import { useTabBarContentPadding } from '../../hooks/useTabBarContentPadding';
 import { orderService } from '../../services/api';
 
 export default function OrdersScreen() {
     const router = useRouter();
+    const tabBarScrollProps = useTabBarScrollProps();
+    const tabBarPadBottom = useTabBarContentPadding();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -138,7 +142,8 @@ export default function OrdersScreen() {
                 data={orders}
                 renderItem={renderOrderItem}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={[styles.listContent, { paddingBottom: tabBarPadBottom }]}
+                {...tabBarScrollProps}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.dark.primary} />
                 }
@@ -176,7 +181,6 @@ const styles = StyleSheet.create({
     listContent: {
         paddingHorizontal: 24,
         paddingTop: 0,
-        paddingBottom: 100,
     },
     card: {
         backgroundColor: Colors.dark.card,

@@ -4,6 +4,11 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import type { LegalDocument } from '../../constants/legalDocuments';
+import {
+    useTabBarScrollProps,
+    useTabBarScrollResetOnFocus,
+} from '../../context/TabBarScrollContext';
+import { useTabBarContentPadding } from '../../hooks/useTabBarContentPadding';
 
 interface LegalDocumentScreenProps {
     document: LegalDocument;
@@ -11,6 +16,9 @@ interface LegalDocumentScreenProps {
 
 export function LegalDocumentScreen({ document: doc }: LegalDocumentScreenProps) {
     const router = useRouter();
+    const tabBarScrollProps = useTabBarScrollProps();
+    const tabBarPadBottom = useTabBarContentPadding();
+    useTabBarScrollResetOnFocus();
 
     return (
         <View style={styles.container}>
@@ -26,8 +34,9 @@ export function LegalDocumentScreen({ document: doc }: LegalDocumentScreenProps)
 
             <ScrollView
                 style={styles.scroll}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarPadBottom }]}
                 showsVerticalScrollIndicator
+                {...tabBarScrollProps}
             >
                 <Text style={styles.lastUpdated}>Last updated: {doc.lastUpdated}</Text>
                 <Text style={styles.intro}>{doc.intro}</Text>
@@ -76,7 +85,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 24,
-        paddingBottom: 48,
     },
     lastUpdated: {
         fontSize: 13,

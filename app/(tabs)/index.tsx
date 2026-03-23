@@ -3,6 +3,8 @@ import { MapPin, Star } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { useTabBarScrollProps } from '../../context/TabBarScrollContext';
+import { useTabBarContentPadding } from '../../hooks/useTabBarContentPadding';
 import { kitchenService } from '../../services/api';
 
 export default function KitchensScreen() {
@@ -10,6 +12,8 @@ export default function KitchensScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const tabBarScrollProps = useTabBarScrollProps();
+  const tabBarPadBottom = useTabBarContentPadding();
 
   const fetchKitchens = async () => {
     try {
@@ -88,7 +92,8 @@ export default function KitchensScreen() {
         data={kitchens}
         renderItem={renderKitchenItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarPadBottom }]}
+        {...tabBarScrollProps}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.dark.primary} />
         }
@@ -131,7 +136,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 100,
   },
   card: {
     backgroundColor: Colors.dark.card,

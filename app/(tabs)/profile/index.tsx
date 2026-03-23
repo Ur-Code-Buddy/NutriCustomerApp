@@ -16,11 +16,19 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import { useAuth } from '../../../context/AuthContext';
+import {
+    useTabBarScrollProps,
+    useTabBarScrollResetOnFocus,
+} from '../../../context/TabBarScrollContext';
+import { useTabBarContentPadding } from '../../../hooks/useTabBarContentPadding';
 import { userService } from '../../../services/api';
 import { LEGAL_SLUGS } from '../../../constants/legalDocuments';
 
 export default function ProfileScreen() {
     const router = useRouter();
+    const tabBarScrollProps = useTabBarScrollProps();
+    const tabBarPadBottom = useTabBarContentPadding();
+    useTabBarScrollResetOnFocus();
     const { signOut, user } = useAuth();
     const [profile, setProfile] = useState<any>(null);
     const [refreshing, setRefreshing] = useState(false);
@@ -57,7 +65,8 @@ export default function ProfileScreen() {
             </View>
 
             <ScrollView
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarPadBottom }]}
+                {...tabBarScrollProps}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.dark.primary} />
                 }
@@ -179,7 +188,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 24,
-        paddingBottom: 100,
     },
     profileCard: {
         alignItems: 'center',
