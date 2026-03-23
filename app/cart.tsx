@@ -112,8 +112,8 @@ export default function CartScreen() {
 
         if (!isRazorpayNativeAvailable()) {
             Alert.alert(
-                'Development build required',
-                'Razorpay needs native code. Create a dev build with:\n\nnpx expo prebuild\nnpx expo run:android\n(or run:ios)\n\nExpo Go does not include the Razorpay module.',
+                'Payment unavailable',
+                'This preview (Expo Go) cannot open Razorpay. Install the release APK built with EAS (preview or production profile), not the development-client build.',
             );
             return;
         }

@@ -1,5 +1,4 @@
 import { NativeModules } from 'react-native';
-import RazorpayCheckout from 'react-native-razorpay';
 
 export type RazorpaySuccessPayload = {
   razorpay_order_id: string;
@@ -21,7 +20,7 @@ function normalizeSuccess(data: Record<string, unknown>): RazorpaySuccessPayload
   };
 }
 
-/** True when the native Razorpay module is linked (development/production build — not Expo Go). */
+/** True when the native Razorpay module is linked (custom native build — not Expo Go). */
 export function isRazorpayNativeAvailable(): boolean {
   return !!NativeModules.RNRazorpayCheckout;
 }
@@ -39,14 +38,20 @@ export type OpenRazorpayParams = {
 
 /**
  * Opens Razorpay Standard Checkout via the official react-native-razorpay native module.
- * Requires `npx expo prebuild` + a dev/production build (not Expo Go).
+ * Requires native linking: EAS preview/production(-apk) or `expo run:*` after prebuild — not Expo Go.
  */
 export async function openRazorpayCheckout(params: OpenRazorpayParams): Promise<RazorpaySuccessPayload> {
   if (!isRazorpayNativeAvailable()) {
     throw new Error(
-      'Razorpay native module is not available. Use an Expo development build (expo run:android / expo run:ios) after prebuild — Expo Go does not include this native code.',
+      'Razorpay native module is not available. Use a release/preview EAS build or expo run:android after prebuild — Expo Go does not ship this native code.',
     );
   }
+
+  // Require here, not at module load: react-native-razorpay touches NativeEventEmitter at import time
+  // and crashes Expo Go / any environment without the native module before cart.tsx can export default.
+  const RazorpayCheckout = require('react-native-razorpay').default as {
+    open: (options: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  };
 
   const amountPaise = Math.max(1, Math.round(params.amountPaise));
   const options: Record<string, unknown> = {
