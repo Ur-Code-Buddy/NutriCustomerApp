@@ -55,8 +55,18 @@ export default function RootLayout() {
                     options={({ navigation }) => ({
                       headerShown: true,
                       headerBackVisible: false,
-                      title: 'Kitchen Details',
-                      headerStyle: { backgroundColor: Colors.dark.card },
+                      title: 'Kitchen',
+                      headerShadowVisible: false,
+                      headerStyle: {
+                        backgroundColor: Colors.dark.sheetTint,
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: Colors.dark.border,
+                      },
+                      headerTitleStyle: {
+                        fontWeight: '700',
+                        fontSize: 17,
+                        color: Colors.dark.text,
+                      },
                       headerTintColor: Colors.dark.text,
                       headerLeftContainerStyle: styles.headerLeftContainer,
                       headerLeft: () => (
@@ -77,8 +87,18 @@ export default function RootLayout() {
                       presentation: 'modal',
                       headerShown: true,
                       headerBackVisible: false,
-                      title: 'Your Cart',
-                      headerStyle: { backgroundColor: Colors.dark.card },
+                      title: 'Cart',
+                      headerShadowVisible: false,
+                      headerStyle: {
+                        backgroundColor: Colors.dark.sheetTint,
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: Colors.dark.border,
+                      },
+                      headerTitleStyle: {
+                        fontWeight: '700',
+                        fontSize: 17,
+                        color: Colors.dark.text,
+                      },
                       headerTintColor: Colors.dark.text,
                       headerLeftContainerStyle: styles.headerLeftContainer,
                       headerLeft: () => (

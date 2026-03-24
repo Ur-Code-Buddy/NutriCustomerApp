@@ -14,6 +14,8 @@ import {
 } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { premiumCardShadowSoft, SCREEN_PADDING_H } from '../../../constants/appChrome';
 import { Colors } from '../../../constants/Colors';
 import { useAuth } from '../../../context/AuthContext';
 import {
@@ -26,6 +28,7 @@ import { LEGAL_SLUGS } from '../../../constants/legalDocuments';
 
 export default function ProfileScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const tabBarScrollProps = useTabBarScrollProps();
     const tabBarPadBottom = useTabBarContentPadding();
     useTabBarScrollResetOnFocus();
@@ -60,8 +63,10 @@ export default function ProfileScreen() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.headerBar}>
-                <Text style={styles.headerTitle}>My Profile</Text>
+            <View style={[styles.headerBar, { paddingTop: insets.top + 8 }]}>
+                <Text style={styles.headerEyebrow}>Account</Text>
+                <Text style={styles.headerTitle}>Profile</Text>
+                <Text style={styles.headerSubtitle}>Details, wallet & preferences</Text>
             </View>
 
             <ScrollView
@@ -71,9 +76,11 @@ export default function ProfileScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.dark.primary} />
                 }
             >
-                <View style={styles.profileCard}>
-                    <View style={styles.avatarContainer}>
-                        <UserCircle size={80} color={Colors.dark.text} strokeWidth={1} />
+                <View style={[styles.profileCard, premiumCardShadowSoft]}>
+                    <View style={styles.avatarRing}>
+                        <View style={styles.avatarContainer}>
+                            <UserCircle size={76} color={Colors.dark.text} strokeWidth={1.2} />
+                        </View>
                     </View>
 
                     {loading ? (
@@ -84,7 +91,9 @@ export default function ProfileScreen() {
                             {profile?.username && (
                                 <Text style={styles.usernameHandle}>@{profile.username}</Text>
                             )}
-                            <Text style={styles.roleBadge}>{profile?.role || 'CLIENT'}</Text>
+                            <View style={styles.roleBadgeWrap}>
+                                <Text style={styles.roleBadge}>{profile?.role || 'CLIENT'}</Text>
+                            </View>
 
                             {profile?.credits != null && (
                                 <View style={styles.creditsCard}>
@@ -122,48 +131,60 @@ export default function ProfileScreen() {
                     )}
                 </View>
 
-                <View style={styles.actionSection}>
+                <Text style={styles.sectionLabel}>Quick actions</Text>
+                <View style={[styles.actionSection, premiumCardShadowSoft]}>
                     <TouchableOpacity
                         style={styles.menuItem}
                         onPress={() => router.push('/(tabs)/profile/edit')}
                     >
-                        <Pencil size={20} color={Colors.dark.primary} />
-                        <Text style={[styles.menuText, { color: Colors.dark.primary }]}>Edit Profile</Text>
+                        <View style={styles.menuIconPrimary}>
+                            <Pencil size={20} color={Colors.dark.primary} />
+                        </View>
+                        <Text style={[styles.menuText, styles.menuTextPrimary]}>Edit profile</Text>
+                        <ChevronRight size={20} color={Colors.dark.muted} />
                     </TouchableOpacity>
                 </View>
 
                 <Text style={styles.sectionLabel}>Legal</Text>
-                <View style={styles.actionSection}>
+                <View style={[styles.actionSection, premiumCardShadowSoft]}>
                     <TouchableOpacity
                         style={styles.menuItem}
                         onPress={() => router.push(`/(tabs)/profile/legal/${LEGAL_SLUGS.PRIVACY}`)}
                     >
-                        <Shield size={20} color={Colors.dark.textSecondary} />
-                        <Text style={styles.menuText}>Privacy Policy</Text>
+                        <View style={styles.menuIconMuted}>
+                            <Shield size={20} color={Colors.dark.textSecondary} />
+                        </View>
+                        <Text style={styles.menuText}>Privacy policy</Text>
                         <ChevronRight size={20} color={Colors.dark.muted} />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.menuItem}
                         onPress={() => router.push(`/(tabs)/profile/legal/${LEGAL_SLUGS.TERMS}`)}
                     >
-                        <FileText size={20} color={Colors.dark.textSecondary} />
-                        <Text style={styles.menuText}>Terms & Conditions</Text>
+                        <View style={styles.menuIconMuted}>
+                            <FileText size={20} color={Colors.dark.textSecondary} />
+                        </View>
+                        <Text style={styles.menuText}>Terms & conditions</Text>
                         <ChevronRight size={20} color={Colors.dark.muted} />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.menuItem, styles.menuItemLast]}
                         onPress={() => router.push(`/(tabs)/profile/legal/${LEGAL_SLUGS.REFUND}`)}
                     >
-                        <RefreshCw size={20} color={Colors.dark.textSecondary} />
-                        <Text style={styles.menuText}>Refund & Cancellation</Text>
+                        <View style={styles.menuIconMuted}>
+                            <RefreshCw size={20} color={Colors.dark.textSecondary} />
+                        </View>
+                        <Text style={styles.menuText}>Refund & cancellation</Text>
                         <ChevronRight size={20} color={Colors.dark.muted} />
                     </TouchableOpacity>
                 </View>
 
-                <View style={[styles.actionSection, styles.signOutSection]}>
+                <View style={[styles.actionSection, styles.signOutSection, premiumCardShadowSoft]}>
                     <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={signOut}>
-                        <LogOut size={20} color={Colors.dark.danger} />
-                        <Text style={[styles.menuText, { color: Colors.dark.danger }]}>Sign Out</Text>
+                        <View style={styles.menuIconDanger}>
+                            <LogOut size={20} color={Colors.dark.danger} />
+                        </View>
+                        <Text style={[styles.menuText, styles.menuTextDanger]}>Sign out</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -175,127 +196,192 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Colors.dark.background,
-        paddingTop: 50,
     },
     headerBar: {
-        paddingHorizontal: 24,
-        marginBottom: 20,
+        paddingHorizontal: SCREEN_PADDING_H,
+        marginBottom: 18,
+    },
+    headerEyebrow: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: Colors.dark.primary,
+        letterSpacing: 1.2,
+        textTransform: 'uppercase',
+        marginBottom: 6,
     },
     headerTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
+        fontSize: 32,
+        fontWeight: '800',
         color: Colors.dark.text,
+        letterSpacing: -0.8,
+    },
+    headerSubtitle: {
+        fontSize: 15,
+        color: Colors.dark.textSecondary,
+        marginTop: 8,
+        lineHeight: 22,
     },
     scrollContent: {
-        paddingHorizontal: 24,
+        paddingHorizontal: SCREEN_PADDING_H,
     },
     profileCard: {
         alignItems: 'center',
-        backgroundColor: Colors.dark.card,
-        borderRadius: 20,
-        padding: 24,
-        marginBottom: 24,
+        backgroundColor: Colors.dark.cardElevated,
+        borderRadius: 24,
+        padding: 26,
+        marginBottom: 22,
         borderWidth: 1,
         borderColor: Colors.dark.border,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 4,
+    },
+    avatarRing: {
+        padding: 4,
+        borderRadius: 999,
+        borderWidth: 2,
+        borderColor: Colors.dark.primaryBorder,
+        backgroundColor: Colors.dark.primaryMuted,
+        marginBottom: 18,
     },
     avatarContainer: {
-        marginBottom: 16,
+        borderRadius: 999,
+        overflow: 'hidden',
     },
     username: {
-        fontSize: 24,
-        fontWeight: 'bold',
+        fontSize: 26,
+        fontWeight: '800',
         color: Colors.dark.text,
         marginBottom: 4,
+        letterSpacing: -0.5,
     },
     usernameHandle: {
         fontSize: 16,
         color: Colors.dark.textSecondary,
-        marginBottom: 8,
+        marginBottom: 10,
+    },
+    roleBadgeWrap: {
+        marginBottom: 16,
     },
     roleBadge: {
-        fontSize: 12,
-        fontWeight: 'bold',
+        fontSize: 11,
+        fontWeight: '800',
         color: Colors.dark.primary,
-        backgroundColor: 'rgba(255, 107, 53, 0.15)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        marginBottom: 16,
+        backgroundColor: Colors.dark.primaryMuted,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
         overflow: 'hidden',
+        letterSpacing: 0.6,
+        borderWidth: 1,
+        borderColor: Colors.dark.primaryBorder,
     },
     creditsCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        backgroundColor: 'rgba(255, 107, 53, 0.1)',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 12,
+        gap: 14,
+        backgroundColor: Colors.dark.primaryMuted,
+        paddingHorizontal: 18,
+        paddingVertical: 14,
+        borderRadius: 16,
         marginBottom: 24,
         width: '100%',
         borderWidth: 1,
-        borderColor: 'rgba(255, 107, 53, 0.3)',
+        borderColor: Colors.dark.primaryBorder,
     },
     creditsLabel: {
         fontSize: 12,
         color: Colors.dark.textSecondary,
     },
     creditsAmount: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 22,
+        fontWeight: '800',
         color: Colors.dark.primary,
+        letterSpacing: -0.3,
     },
     infoSection: {
         width: '100%',
-        gap: 16,
+        gap: 10,
     },
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+        backgroundColor: Colors.dark.backgroundSecondary,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: Colors.dark.border,
     },
     infoText: {
-        fontSize: 16,
+        fontSize: 15,
         color: Colors.dark.textSecondary,
         flex: 1,
+        lineHeight: 21,
     },
     actionSection: {
-        backgroundColor: Colors.dark.card,
-        borderRadius: 16,
+        backgroundColor: Colors.dark.cardElevated,
+        borderRadius: 20,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: Colors.dark.border,
     },
     sectionLabel: {
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: 12,
+        fontWeight: '700',
         color: Colors.dark.textSecondary,
         textTransform: 'uppercase',
-        letterSpacing: 0.6,
+        letterSpacing: 1,
         marginBottom: 10,
-        marginTop: 8,
+        marginTop: 4,
     },
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
         borderBottomWidth: 1,
         borderBottomColor: Colors.dark.border,
     },
     menuItemLast: {
         borderBottomWidth: 0,
     },
+    menuIconPrimary: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: Colors.dark.primaryMuted,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: Colors.dark.primaryBorder,
+    },
+    menuIconMuted: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: Colors.dark.backgroundSecondary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    menuIconDanger: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 69, 58, 0.12)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     menuText: {
         fontSize: 16,
-        marginLeft: 12,
-        fontWeight: '500',
+        marginLeft: 14,
+        fontWeight: '600',
         color: Colors.dark.text,
         flex: 1,
+    },
+    menuTextPrimary: {
+        color: Colors.dark.primary,
+    },
+    menuTextDanger: {
+        color: Colors.dark.danger,
     },
     signOutSection: {
         marginTop: 16,

@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sheetBg: {
-    backgroundColor: Colors.dark.card,
+    backgroundColor: Colors.dark.sheetTint,
   },
   handle: {
     backgroundColor: Colors.dark.borderLight,
@@ -483,8 +483,8 @@ const styles = StyleSheet.create({
     minWidth: '22%',
     flexGrow: 1,
     maxWidth: '48%',
-    backgroundColor: Colors.dark.background,
-    borderRadius: 12,
+    backgroundColor: Colors.dark.backgroundSecondary,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.dark.border,
     paddingVertical: 14,
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     backgroundColor: Colors.dark.primary,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',

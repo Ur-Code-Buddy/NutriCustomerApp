@@ -19,8 +19,8 @@ import {
 import { useTabBarScroll } from '../context/TabBarScrollContext';
 
 const TAB_BAR_COLORS = {
-  surfaceElevated: Colors.dark.card,
-  borderLight: Colors.dark.border,
+  surfaceElevated: Colors.dark.cardElevated,
+  borderLight: Colors.dark.borderLight,
   primary: Colors.dark.primary,
   textTertiary: Colors.dark.muted,
 };
@@ -56,13 +56,7 @@ export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps
       pointerEvents="box-none"
     >
       <View
-        style={[
-          styles.pill,
-          Platform.select({
-            ios: styles.pillShadowIOS,
-            default: styles.pillShadowAndroid,
-          }),
-        ]}
+        style={[styles.pill, Platform.OS === 'ios' ? styles.pillShadowIOS : styles.pillShadowAndroid]}
       >
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
@@ -136,21 +130,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    width: '85%',
+    width: '88%',
+    maxWidth: 400,
     height: PILL_TAB_BAR_HEIGHT,
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     backgroundColor: TAB_BAR_COLORS.surfaceElevated,
     borderRadius: 999,
     borderWidth: 1,
-    borderTopWidth: 0,
     borderColor: TAB_BAR_COLORS.borderLight,
   },
   pillShadowIOS: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.45,
+    shadowRadius: 24,
   },
   pillShadowAndroid: {
     elevation: 30,

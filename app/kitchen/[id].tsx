@@ -1,7 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronDown, ChevronUp, Clock, MapPin, Phone, Plus, ShoppingCart } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { ChevronDown, ChevronUp, Clock, MapPin, Phone, Plus, ShoppingCart, Star } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { premiumCardShadowSoft, SCREEN_PADDING_H } from '../../constants/appChrome';
 import { Colors } from '../../constants/Colors';
 import { useCart } from '../../context/CartContext';
 import { kitchenService } from '../../services/api';
@@ -73,8 +75,13 @@ export default function KitchenDetailsScreen() {
         const veg = isVeg(item);
 
         return (
-            <View style={styles.menuItem}>
-                <Image source={{ uri: item.image_url || 'https://via.placeholder.com/150' }} style={styles.menuImage} />
+            <View style={[styles.menuItem, premiumCardShadowSoft]}>
+                <Image
+                    source={{ uri: item.image_url || 'https://via.placeholder.com/150' }}
+                    style={styles.menuImage}
+                    contentFit="cover"
+                    transition={150}
+                />
                 <View style={styles.menuContent}>
                     <View style={styles.menuNameRow}>
                         <Text style={styles.menuName}>{item.name}</Text>
@@ -127,13 +134,42 @@ export default function KitchenDetailsScreen() {
         );
     }
 
+    const heroUri = kitchen?.image_url as string | undefined;
+
     return (
         <View style={styles.container}>
             {kitchen && (
                 <View style={styles.header}>
-                    <Text style={styles.title}>{kitchen.name}</Text>
+                    {heroUri ? (
+                        <View style={styles.heroWrap}>
+                            <Image source={{ uri: heroUri }} style={styles.heroImage} contentFit="cover" transition={200} />
+                            <View style={styles.heroTextBlock}>
+                                <Text style={styles.titleOnHero} numberOfLines={2}>
+                                    {kitchen.name}
+                                </Text>
+                                {kitchen.rating != null && (
+                                    <View style={styles.heroRating}>
+                                        <Star size={14} color={Colors.dark.primary} fill={Colors.dark.primary} />
+                                        <Text style={styles.heroRatingText}>{kitchen.rating}</Text>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+                    ) : (
+                        <>
+                            <Text style={styles.title}>{kitchen.name}</Text>
+                            {kitchen.rating != null && (
+                                <View style={styles.titleRowRating}>
+                                    <Star size={14} color={Colors.dark.primary} fill={Colors.dark.primary} />
+                                    <Text style={styles.heroRatingText}>{kitchen.rating}</Text>
+                                </View>
+                            )}
+                        </>
+                    )}
                     {(kitchen.details?.description || kitchen.description) && (
-                        <Text style={styles.subtitle}>{kitchen.details?.description || kitchen.description}</Text>
+                        <Text style={[styles.subtitle, heroUri && styles.subtitleBelowHero]}>
+                            {kitchen.details?.description || kitchen.description}
+                        </Text>
                     )}
 
                     {(kitchen.details?.phone || kitchen.details?.address || getOperatingHoursList(kitchen.operating_hours).length > 0) && (
@@ -216,11 +252,17 @@ export default function KitchenDetailsScreen() {
                 renderItem={renderMenuItem}
                 keyExtractor={(item: any) => item.id}
                 contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                ListHeaderComponent={
+                    menuItems.length > 0 ? (
+                        <Text style={styles.menuSectionLabel}>Menu</Text>
+                    ) : null
+                }
             />
 
             {count > 0 && (
                 <View style={styles.floatingCartContainer}>
-                    <TouchableOpacity style={styles.floatingCart} onPress={() => router.push('/cart')}>
+                    <TouchableOpacity style={[styles.floatingCart, premiumCardShadowSoft]} onPress={() => router.push('/cart')}>
                         <View style={styles.cartInfo}>
                             <View style={styles.badge}>
                                 <Text style={styles.badgeText}>{count}</Text>
@@ -247,18 +289,75 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.dark.background,
     },
     header: {
-        paddingHorizontal: 20,
-        paddingVertical: 20,
-        paddingBottom: 24,
+        paddingHorizontal: SCREEN_PADDING_H,
+        paddingTop: 16,
+        paddingBottom: 22,
         borderBottomWidth: 1,
         borderBottomColor: Colors.dark.border,
-        backgroundColor: Colors.dark.card,
+        backgroundColor: Colors.dark.sheetTint,
+    },
+    heroWrap: {
+        height: 168,
+        borderRadius: 20,
+        overflow: 'hidden',
+        marginBottom: 16,
+        backgroundColor: Colors.dark.backgroundSecondary,
+    },
+    heroImage: {
+        width: '100%',
+        height: '100%',
+    },
+    heroTextBlock: {
+        position: 'absolute',
+        left: 16,
+        right: 16,
+        bottom: 14,
+    },
+    titleOnHero: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: Colors.dark.text,
+        letterSpacing: -0.5,
+        textShadowColor: 'rgba(0,0,0,0.55)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 8,
+    },
+    heroRating: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        marginTop: 8,
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 999,
+        backgroundColor: 'rgba(12, 12, 14, 0.65)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
+    },
+    heroRatingText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: Colors.dark.primary,
     },
     title: {
-        fontSize: 26,
-        fontWeight: 'bold',
+        fontSize: 28,
+        fontWeight: '800',
         color: Colors.dark.text,
-        letterSpacing: 0.5,
+        letterSpacing: -0.6,
+    },
+    titleRowRating: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 10,
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 999,
+        backgroundColor: Colors.dark.primaryMuted,
+        borderWidth: 1,
+        borderColor: Colors.dark.primaryBorder,
     },
     subtitle: {
         fontSize: 15,
@@ -266,10 +365,21 @@ const styles = StyleSheet.create({
         marginTop: 6,
         lineHeight: 22,
     },
+    subtitleBelowHero: {
+        marginTop: 0,
+    },
+    menuSectionLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: Colors.dark.textSecondary,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+        marginBottom: 14,
+    },
     detailsSection: {
-        marginTop: 20,
-        backgroundColor: Colors.dark.background,
-        borderRadius: 12,
+        marginTop: 18,
+        backgroundColor: Colors.dark.backgroundSecondary,
+        borderRadius: 16,
         borderWidth: 1,
         borderColor: Colors.dark.border,
         overflow: 'hidden',
@@ -300,10 +410,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: Colors.dark.card,
+        backgroundColor: Colors.dark.cardElevated,
         paddingHorizontal: 14,
         paddingVertical: 12,
-        borderRadius: 12,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: Colors.dark.border,
     },
@@ -364,28 +474,23 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     listContent: {
-        paddingHorizontal: 24,
-        paddingVertical: 16,
-        paddingBottom: 100,
+        paddingHorizontal: SCREEN_PADDING_H,
+        paddingTop: 20,
+        paddingBottom: 112,
     },
     menuItem: {
         flexDirection: 'row',
-        backgroundColor: Colors.dark.card,
-        borderRadius: 12,
-        marginBottom: 12,
-        padding: 12,
+        backgroundColor: Colors.dark.cardElevated,
+        borderRadius: 18,
+        marginBottom: 14,
+        padding: 14,
         borderWidth: 1,
         borderColor: Colors.dark.border,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 4,
     },
     menuImage: {
-        width: 80,
-        height: 80,
-        borderRadius: 8,
+        width: 88,
+        height: 88,
+        borderRadius: 14,
         backgroundColor: Colors.dark.border,
     },
     menuContent: {
@@ -399,9 +504,10 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     menuName: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 17,
+        fontWeight: '700',
         color: Colors.dark.text,
+        letterSpacing: -0.2,
     },
     vegBadge: {
         paddingHorizontal: 6,
@@ -442,35 +548,32 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: Colors.dark.primary,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 999,
     },
     addButtonText: {
         color: Colors.dark.primaryForeground,
-        fontWeight: 'bold',
+        fontWeight: '800',
         marginLeft: 4,
-        fontSize: 12,
+        fontSize: 13,
     },
     floatingCartContainer: {
         position: 'absolute',
-        bottom: 24,
-        left: 24,
-        right: 24,
+        bottom: 22,
+        left: SCREEN_PADDING_H,
+        right: SCREEN_PADDING_H,
     },
     floatingCart: {
         backgroundColor: Colors.dark.primary,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
+        paddingHorizontal: 22,
         paddingVertical: 16,
-        borderRadius: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: Colors.dark.primaryBorder,
     },
     cartInfo: {
         flexDirection: 'row',
@@ -496,10 +599,11 @@ const styles = StyleSheet.create({
     quantityContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.dark.card,
+        backgroundColor: Colors.dark.backgroundSecondary,
         borderWidth: 1,
         borderColor: Colors.dark.border,
-        borderRadius: 8,
+        borderRadius: 999,
+        paddingHorizontal: 2,
     },
     quantityButton: {
         padding: 5,

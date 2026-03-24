@@ -4,6 +4,7 @@ import { CreditCard, Minus, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { premiumCardShadowSoft, SCREEN_PADDING_H } from '../constants/appChrome';
 import { Colors } from '../constants/Colors';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -173,7 +174,7 @@ export default function CartScreen() {
     };
 
     const renderCartItem = ({ item }: { item: { item: any, quantity: number } }) => (
-        <View style={styles.cartItem}>
+        <View style={[styles.cartItem, premiumCardShadowSoft]}>
             <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{item.item.name}</Text>
                 <Text style={styles.itemPrice}>₹{Number(item.item.price).toFixed(2)}</Text>
@@ -383,13 +384,14 @@ export default function CartScreen() {
             <>
                 {paymentSheet}
                 <View style={styles.centered}>
-                    <Text style={styles.emptyText}>Your cart is empty</Text>
+                    <Text style={styles.emptyTitle}>Your cart is empty</Text>
+                    <Text style={styles.emptyText}>Add dishes from a kitchen to see them here.</Text>
                     <TouchableOpacity
                         style={styles.browsingButton}
                         onPress={() => router.back()}
                         activeOpacity={0.85}
                     >
-                        <Text style={styles.browsingButtonText}>Start Browsing</Text>
+                        <Text style={styles.browsingButtonText}>Browse menus</Text>
                     </TouchableOpacity>
                 </View>
             </>
@@ -407,9 +409,12 @@ export default function CartScreen() {
                 showsVerticalScrollIndicator={false}
                 ListHeaderComponent={
                     <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Order Summary</Text>
+                        <View>
+                            <Text style={styles.headerEyebrow}>Almost there</Text>
+                            <Text style={styles.headerTitle}>Order summary</Text>
+                        </View>
                         <TouchableOpacity onPress={clearCart} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                            <Text style={styles.clearText}>Clear Cart</Text>
+                            <Text style={styles.clearText}>Clear</Text>
                         </TouchableOpacity>
                     </View>
                 }
@@ -429,54 +434,71 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: Colors.dark.background,
+        paddingHorizontal: 32,
+    },
+    emptyTitle: {
+        color: Colors.dark.text,
+        fontSize: 22,
+        fontWeight: '800',
+        marginBottom: 10,
+        letterSpacing: -0.4,
     },
     emptyText: {
         color: Colors.dark.textSecondary,
-        fontSize: 18,
-        marginBottom: 20,
+        fontSize: 15,
+        marginBottom: 24,
+        textAlign: 'center',
+        lineHeight: 22,
     },
     browsingButton: {
         backgroundColor: Colors.dark.primary,
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
+        paddingHorizontal: 28,
+        paddingVertical: 14,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: Colors.dark.primaryBorder,
     },
     browsingButtonText: {
         color: Colors.dark.primaryForeground,
-        fontWeight: 'bold',
+        fontWeight: '800',
+        fontSize: 16,
     },
     listContent: {
-        paddingHorizontal: 24,
+        paddingHorizontal: SCREEN_PADDING_H,
         paddingVertical: 16,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 24,
+        alignItems: 'flex-start',
+        marginBottom: 22,
         borderBottomWidth: 1,
         borderBottomColor: Colors.dark.border,
-        paddingBottom: 16,
+        paddingBottom: 18,
+    },
+    headerEyebrow: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: Colors.dark.primary,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+        marginBottom: 6,
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 24,
+        fontWeight: '800',
         color: Colors.dark.text,
+        letterSpacing: -0.5,
     },
     cartItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.dark.card,
-        padding: 12,
-        borderRadius: 12,
+        backgroundColor: Colors.dark.cardElevated,
+        padding: 14,
+        borderRadius: 18,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: Colors.dark.border,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 4,
     },
     itemInfo: {
         flex: 1,
@@ -484,7 +506,8 @@ const styles = StyleSheet.create({
     itemName: {
         fontSize: 16,
         color: Colors.dark.text,
-        fontWeight: '500',
+        fontWeight: '600',
+        letterSpacing: -0.2,
     },
     itemPrice: {
         fontSize: 14,
@@ -495,9 +518,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginHorizontal: 12,
-        backgroundColor: Colors.dark.background,
-        borderRadius: 8,
+        backgroundColor: Colors.dark.backgroundSecondary,
+        borderRadius: 999,
         padding: 4,
+        borderWidth: 1,
+        borderColor: Colors.dark.border,
     },
     quantityButton: {
         padding: 4,
@@ -526,20 +551,26 @@ const styles = StyleSheet.create({
     clearText: {
         color: Colors.dark.danger,
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: '700',
+        marginTop: 22,
     },
     footerWrapper: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: Colors.dark.card,
+        backgroundColor: Colors.dark.sheetTint,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         borderTopWidth: 1,
-        borderTopColor: Colors.dark.border,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderColor: Colors.dark.border,
+        ...premiumCardShadowSoft,
     },
     footer: {
-        paddingHorizontal: 24,
-        paddingTop: 20,
+        paddingHorizontal: SCREEN_PADDING_H,
+        paddingTop: 22,
     },
     feeRow: {
         flexDirection: 'row',
@@ -614,11 +645,13 @@ const styles = StyleSheet.create({
     },
     checkoutButton: {
         backgroundColor: Colors.dark.primary,
-        height: 52,
-        borderRadius: 14,
+        height: 54,
+        borderRadius: 999,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: Colors.dark.primaryBorder,
     },
     checkoutButtonDisabled: {
         opacity: 0.45,
@@ -654,16 +687,16 @@ const styles = StyleSheet.create({
     },
     scheduleChip: {
         flex: 1,
-        paddingVertical: 10,
+        paddingVertical: 12,
         paddingHorizontal: 8,
-        borderRadius: 10,
-        backgroundColor: Colors.dark.background,
+        borderRadius: 14,
+        backgroundColor: Colors.dark.backgroundSecondary,
         borderWidth: 1,
         borderColor: Colors.dark.border,
     },
     scheduleChipSelected: {
         borderColor: Colors.dark.primary,
-        backgroundColor: Colors.dark.card,
+        backgroundColor: Colors.dark.primaryMuted,
     },
     scheduleChipText: {
         fontSize: 12,
