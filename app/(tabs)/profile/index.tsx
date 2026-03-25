@@ -13,7 +13,17 @@ import {
     Wallet,
 } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+    ActivityIndicator,
+    Modal,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { premiumCardShadowSoft, SCREEN_PADDING_H } from '../../../constants/appChrome';
 import { Colors } from '../../../constants/Colors';
@@ -36,6 +46,7 @@ export default function ProfileScreen() {
     const [profile, setProfile] = useState<any>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [contactModalVisible, setContactModalVisible] = useState(false);
 
     const fetchProfile = async () => {
         try {
@@ -104,37 +115,27 @@ export default function ProfileScreen() {
                                     </View>
                                 </View>
                             )}
-
-                            <View style={styles.infoSection}>
-                                <View style={styles.infoRow}>
-                                    <Mail size={18} color={Colors.dark.textSecondary} />
-                                    <Text style={styles.infoText}>{profile?.email || 'No email'}</Text>
-                                </View>
-                                <View style={styles.infoRow}>
-                                    <Phone size={18} color={Colors.dark.textSecondary} />
-                                    <Text style={styles.infoText}>{profile?.phone_number || 'No phone'}</Text>
-                                </View>
-                                {profile?.address && (
-                                    <View style={styles.infoRow}>
-                                        <MapPin size={18} color={Colors.dark.textSecondary} />
-                                        <Text style={styles.infoText}>{profile.address}</Text>
-                                    </View>
-                                )}
-                                {profile?.pincode && (
-                                    <View style={styles.infoRow}>
-                                        <MapPin size={18} color={Colors.dark.textSecondary} />
-                                        <Text style={styles.infoText}>Pincode: {profile.pincode}</Text>
-                                    </View>
-                                )}
-                            </View>
                         </>
                     )}
                 </View>
 
                 <Text style={styles.sectionLabel}>Quick actions</Text>
                 <View style={[styles.actionSection, premiumCardShadowSoft]}>
+                    {!loading && (
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => setContactModalVisible(true)}
+                            activeOpacity={0.7}
+                        >
+                            <View style={styles.menuIconPrimary}>
+                                <Mail size={20} color={Colors.dark.primary} />
+                            </View>
+                            <Text style={[styles.menuText, styles.menuTextPrimary]}>Contact & address</Text>
+                            <ChevronRight size={20} color={Colors.dark.muted} />
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity
-                        style={styles.menuItem}
+                        style={[styles.menuItem, styles.menuItemLast]}
                         onPress={() => router.push('/(tabs)/profile/edit')}
                     >
                         <View style={styles.menuIconPrimary}>
@@ -188,6 +189,103 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+
+            <Modal
+                visible={contactModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setContactModalVisible(false)}
+            >
+                <View
+                    style={[
+                        styles.modalRoot,
+                        { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 },
+                    ]}
+                >
+                    <Pressable
+                        style={styles.modalBackdrop}
+                        onPress={() => setContactModalVisible(false)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Close contact details"
+                    />
+                    <View style={styles.modalPanel}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Contact & address</Text>
+                            <Text style={styles.modalSubtitle}>How we reach you and where meals go</Text>
+                        </View>
+                        <ScrollView
+                            style={styles.modalScroll}
+                            contentContainerStyle={styles.modalScrollContent}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            <View style={styles.modalDetailGroup}>
+                                {(
+                                    [
+                                        {
+                                            key: 'email',
+                                            Icon: Mail,
+                                            label: 'Email',
+                                            value: profile?.email || 'No email',
+                                        },
+                                        {
+                                            key: 'phone',
+                                            Icon: Phone,
+                                            label: 'Phone',
+                                            value: profile?.phone_number || 'No phone',
+                                        },
+                                        ...(profile?.address
+                                            ? [
+                                                  {
+                                                      key: 'address',
+                                                      Icon: MapPin,
+                                                      label: 'Address',
+                                                      value: profile.address as string,
+                                                  },
+                                              ]
+                                            : []),
+                                        ...(profile?.pincode
+                                            ? [
+                                                  {
+                                                      key: 'pincode',
+                                                      Icon: MapPin,
+                                                      label: 'Pincode',
+                                                      value: String(profile.pincode),
+                                                  },
+                                              ]
+                                            : []),
+                                    ] as const
+                                ).map((row, i, arr) => {
+                                    const Icon = row.Icon;
+                                    return (
+                                        <View key={row.key}>
+                                            <View style={styles.modalDetailRow}>
+                                                <View style={styles.modalDetailIconWrap}>
+                                                    <Icon size={18} color={Colors.dark.primary} />
+                                                </View>
+                                                <View style={styles.modalDetailBody}>
+                                                    <Text style={styles.modalDetailLabel}>{row.label}</Text>
+                                                    <Text style={styles.modalDetailValue}>{row.value}</Text>
+                                                </View>
+                                            </View>
+                                            {i < arr.length - 1 ? (
+                                                <View style={styles.modalDetailHairline} />
+                                            ) : null}
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        </ScrollView>
+                        <TouchableOpacity
+                            style={styles.modalDone}
+                            onPress={() => setContactModalVisible(false)}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={styles.modalDoneText}>Done</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -296,26 +394,114 @@ const styles = StyleSheet.create({
         color: Colors.dark.primary,
         letterSpacing: -0.3,
     },
-    infoSection: {
-        width: '100%',
-        gap: 10,
+    modalRoot: {
+        flex: 1,
+        justifyContent: 'center',
+        paddingHorizontal: SCREEN_PADDING_H,
     },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        backgroundColor: Colors.dark.backgroundSecondary,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderRadius: 14,
+    modalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: Colors.dark.overlay,
+    },
+    modalPanel: {
+        width: '100%',
+        maxHeight: '82%',
+        zIndex: 1,
+        backgroundColor: Colors.dark.cardElevated,
+        borderRadius: 22,
         borderWidth: 1,
         borderColor: Colors.dark.border,
+        paddingTop: 22,
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        overflow: 'hidden',
     },
-    infoText: {
-        fontSize: 15,
+    modalHeader: {
+        paddingBottom: 18,
+        marginBottom: 4,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: Colors.dark.borderLight,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: Colors.dark.text,
+        letterSpacing: -0.4,
+        marginBottom: 6,
+    },
+    modalSubtitle: {
+        fontSize: 14,
+        lineHeight: 20,
         color: Colors.dark.textSecondary,
+        fontWeight: '500',
+    },
+    modalScroll: {
+        maxHeight: 400,
+    },
+    modalScrollContent: {
+        paddingTop: 4,
+        paddingBottom: 4,
+    },
+    modalDetailGroup: {
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: Colors.dark.border,
+        backgroundColor: Colors.dark.backgroundSecondary,
+        overflow: 'hidden',
+    },
+    modalDetailRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+    },
+    modalDetailIconWrap: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: Colors.dark.primaryMuted,
+        borderWidth: 1,
+        borderColor: Colors.dark.primaryBorder,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    modalDetailBody: {
         flex: 1,
-        lineHeight: 21,
+        minWidth: 0,
+    },
+    modalDetailLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: Colors.dark.muted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.7,
+        marginBottom: 5,
+    },
+    modalDetailValue: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: Colors.dark.text,
+        lineHeight: 22,
+    },
+    modalDetailHairline: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: Colors.dark.border,
+        marginLeft: 66,
+    },
+    modalDone: {
+        marginTop: 18,
+        paddingVertical: 16,
+        borderRadius: 14,
+        backgroundColor: Colors.dark.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalDoneText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.dark.primaryForeground,
+        letterSpacing: 0.2,
     },
     actionSection: {
         backgroundColor: Colors.dark.cardElevated,
