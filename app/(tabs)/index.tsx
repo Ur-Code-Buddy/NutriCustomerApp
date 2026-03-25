@@ -4,8 +4,11 @@ import { MapPin, Star } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { HomeCartBanner } from '../../components/HomeCartBanner';
 import { premiumCardShadowSoft, SCREEN_PADDING_H } from '../../constants/appChrome';
 import { Colors } from '../../constants/Colors';
+import { homeCartBannerExtraPadding } from '../../constants/tabBarLayout';
+import { useCart } from '../../context/CartContext';
 import { useTabBarScrollProps } from '../../context/TabBarScrollContext';
 import { useTabBarContentPadding } from '../../hooks/useTabBarContentPadding';
 import { kitchenService } from '../../services/api';
@@ -18,6 +21,9 @@ export default function KitchensScreen() {
   const insets = useSafeAreaInsets();
   const tabBarScrollProps = useTabBarScrollProps();
   const tabBarPadBottom = useTabBarContentPadding();
+  const { count: cartCount } = useCart();
+  const listPadBottom =
+    tabBarPadBottom + homeCartBannerExtraPadding(cartCount > 0);
 
   const fetchKitchens = async () => {
     try {
@@ -119,7 +125,7 @@ export default function KitchensScreen() {
         data={kitchens}
         renderItem={renderKitchenItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarPadBottom }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: listPadBottom }]}
         showsVerticalScrollIndicator={false}
         {...tabBarScrollProps}
         refreshControl={
@@ -132,6 +138,7 @@ export default function KitchensScreen() {
           </View>
         }
       />
+      <HomeCartBanner />
     </View>
   );
 }

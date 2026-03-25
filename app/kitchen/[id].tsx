@@ -37,7 +37,7 @@ export default function KitchenDetailsScreen() {
     }, [id]);
 
     const handleAddToCart = async (item: any) => {
-        await addToCart(item, 1, id as string);
+        await addToCart(item, 1, id as string, kitchen?.name ?? null);
     };
 
     const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
