@@ -34,8 +34,8 @@ export function tabBarHideTranslateY(safeAreaBottomInset: number): number {
   );
 }
 
-/** Slim cart strip above the pill tab bar (Kitchens tab only). */
-export const HOME_CART_BANNER_HEIGHT = 56;
+/** Cart preview pill above tab bar (Kitchens). Sync with HomeCartBanner vertical size. */
+export const HOME_CART_BANNER_HEIGHT = 64;
 export const HOME_CART_BANNER_GAP_ABOVE_TAB = 10;
 
 export function homeCartBannerExtraPadding(hasCart: boolean): number {

@@ -74,7 +74,11 @@ export default function KitchensScreen() {
       </View>
       <View style={styles.cardContent}>
         <View style={styles.headerRow}>
-          <Text style={styles.kitchenName} numberOfLines={1}>
+          <Text
+            style={styles.kitchenName}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
             {item.name}
           </Text>
           {item.rating && (
@@ -240,7 +244,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 8,
     gap: 12,
   },
@@ -248,10 +252,15 @@ const styles = StyleSheet.create({
     fontSize: 19,
     fontWeight: '700',
     color: Colors.dark.text,
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
     letterSpacing: -0.3,
+    lineHeight: 24,
   },
   ratingContainer: {
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.dark.primaryMuted,

@@ -8,15 +8,22 @@ export interface CartItem {
   quantity: number;
 }
 
+/** Optional kitchen snapshot when adding items (shown on home cart bar). */
+export type CartKitchenMeta = {
+  name?: string | null;
+  imageUrl?: string | null;
+};
+
 interface CartContextType {
   cartItems: CartItem[];
   kitchenId: string | null;
   kitchenName: string | null;
+  kitchenImageUrl: string | null;
   addToCart: (
     item: any,
     quantity?: number,
     kitchenId?: string,
-    kitchenDisplayName?: string | null,
+    kitchenMeta?: CartKitchenMeta,
   ) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
@@ -25,10 +32,16 @@ interface CartContextType {
   count: number;
 }
 
+const emptyKitchenMeta = (): { name: string | null; imageUrl: string | null } => ({
+  name: null,
+  imageUrl: null,
+});
+
 const CartContext = createContext<CartContextType>({
   cartItems: [],
   kitchenId: null,
   kitchenName: null,
+  kitchenImageUrl: null,
   addToCart: async () => {},
   removeFromCart: async () => {},
   updateQuantity: async () => {},
@@ -44,6 +57,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [kitchenId, setKitchenId] = useState<string | null>(null);
   const [kitchenName, setKitchenName] = useState<string | null>(null);
+  const [kitchenImageUrl, setKitchenImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadCart();
@@ -57,11 +71,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const persistCart = async (
     newItems: CartItem[],
     newKitchenId: string | null,
-    newKitchenName: string | null,
+    meta: { name: string | null; imageUrl: string | null },
   ) => {
     setCartItems(newItems);
     setKitchenId(newKitchenId);
-    setKitchenName(newKitchenName);
+    setKitchenName(meta.name);
+    setKitchenImageUrl(meta.imageUrl);
 
     const key = getCartKey();
     if (!key) return;
@@ -71,15 +86,21 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         await SecureStore.deleteItemAsync(key);
         await SecureStore.deleteItemAsync(`${key}_kitchen_id`);
         await SecureStore.deleteItemAsync(`${key}_kitchen_name`);
+        await SecureStore.deleteItemAsync(`${key}_kitchen_image`);
       } else {
         await SecureStore.setItemAsync(key, JSON.stringify(newItems));
         if (newKitchenId) {
           await SecureStore.setItemAsync(`${key}_kitchen_id`, newKitchenId);
         }
-        if (newKitchenName) {
-          await SecureStore.setItemAsync(`${key}_kitchen_name`, newKitchenName);
+        if (meta.name) {
+          await SecureStore.setItemAsync(`${key}_kitchen_name`, meta.name);
         } else {
           await SecureStore.deleteItemAsync(`${key}_kitchen_name`);
+        }
+        if (meta.imageUrl) {
+          await SecureStore.setItemAsync(`${key}_kitchen_image`, meta.imageUrl);
+        } else {
+          await SecureStore.deleteItemAsync(`${key}_kitchen_image`);
         }
       }
     } catch (error) {
@@ -93,6 +114,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       setCartItems([]);
       setKitchenId(null);
       setKitchenName(null);
+      setKitchenImageUrl(null);
       return;
     }
 
@@ -104,16 +126,21 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       const savedKitchenName = await SecureStore.getItemAsync(
         `${key}_kitchen_name`,
       );
+      const savedKitchenImage = await SecureStore.getItemAsync(
+        `${key}_kitchen_image`,
+      );
 
       if (savedCart && savedKitchenId) {
         const parsedCart = JSON.parse(savedCart);
         setCartItems(parsedCart);
         setKitchenId(savedKitchenId);
         setKitchenName(savedKitchenName || null);
+        setKitchenImageUrl(savedKitchenImage || null);
       } else {
         setCartItems([]);
         setKitchenId(null);
         setKitchenName(null);
+        setKitchenImageUrl(null);
       }
     } catch (error) {
       console.error("Failed to load cart", error);
@@ -124,7 +151,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     item: any,
     quantity = 1,
     kId?: string,
-    kitchenDisplayName?: string | null,
+    kitchenMeta?: CartKitchenMeta,
   ) => {
     if (!user) {
       Alert.alert(
@@ -153,7 +180,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             style: "destructive",
             onPress: async () => {
               const newItems = [{ item, quantity }];
-              await persistCart(newItems, kId!, kitchenDisplayName ?? null);
+              await persistCart(newItems, kId!, {
+                name: kitchenMeta?.name ?? null,
+                imageUrl: kitchenMeta?.imageUrl ?? null,
+              });
             },
           },
         ],
@@ -161,14 +191,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    await addItemHelper(item, quantity, kId, kitchenDisplayName);
+    await addItemHelper(item, quantity, kId, kitchenMeta);
   };
 
   const addItemHelper = async (
     item: any,
     quantity: number,
     kId: string,
-    kitchenDisplayName?: string | null,
+    kitchenMeta?: CartKitchenMeta,
   ) => {
     let newItems = [...cartItems];
     const existingIndex = newItems.findIndex((i) => i.item.id === item.id);
@@ -179,17 +209,23 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       newItems.push({ item, quantity });
     }
 
-    const resolvedName = (kitchenDisplayName ?? kitchenName) ?? null;
+    const meta = {
+      name: (kitchenMeta?.name ?? kitchenName) ?? null,
+      imageUrl: (kitchenMeta?.imageUrl ?? kitchenImageUrl) ?? null,
+    };
 
-    await persistCart(newItems, kId, resolvedName);
+    await persistCart(newItems, kId, meta);
   };
 
   const removeFromCart = async (itemId: string) => {
     const newItems = cartItems.filter((i) => i.item.id !== itemId);
     if (newItems.length === 0) {
-      await persistCart([], null, null);
+      await persistCart([], null, emptyKitchenMeta());
     } else {
-      await persistCart(newItems, kitchenId, kitchenName);
+      await persistCart(newItems, kitchenId, {
+        name: kitchenName,
+        imageUrl: kitchenImageUrl,
+      });
     }
   };
 
@@ -206,11 +242,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return i;
     });
 
-    await persistCart(newItems, kitchenId, kitchenName);
+    await persistCart(newItems, kitchenId, {
+      name: kitchenName,
+      imageUrl: kitchenImageUrl,
+    });
   };
 
   const clearCart = async () => {
-    await persistCart([], null, null);
+    await persistCart([], null, emptyKitchenMeta());
   };
 
   const totalAmount = cartItems.reduce(
@@ -225,6 +264,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         cartItems,
         kitchenId,
         kitchenName,
+        kitchenImageUrl,
         addToCart,
         removeFromCart,
         updateQuantity,
