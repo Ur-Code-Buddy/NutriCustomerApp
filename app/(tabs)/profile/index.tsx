@@ -10,7 +10,9 @@ import {
     Phone,
     RefreshCw,
     Shield,
+    ShieldCheck,
     Wallet,
+    type LucideIcon,
 } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import {
@@ -52,6 +54,34 @@ function initialsFromDisplayName(name: string): string {
     const t = name.trim();
     if (!t) return '?';
     return t.slice(0, 2).toUpperCase();
+}
+
+function ProfileMenuRow({
+    title,
+    icon: Icon,
+    onPress,
+    last,
+}: {
+    title: string;
+    icon: LucideIcon;
+    onPress: () => void;
+    last?: boolean;
+}) {
+    return (
+        <TouchableOpacity
+            style={[styles.menuItem, last ? styles.menuItemLast : undefined]}
+            onPress={onPress}
+            activeOpacity={0.7}
+        >
+            <View style={styles.menuIconTile}>
+                <Icon size={20} color={Colors.dark.text} strokeWidth={2} />
+            </View>
+            <View style={styles.menuItemBody}>
+                <Text style={styles.menuItemTitle}>{title}</Text>
+            </View>
+            <ChevronRight size={20} color={Colors.dark.muted} />
+        </TouchableOpacity>
+    );
 }
 
 export default function ProfileScreen() {
@@ -110,7 +140,12 @@ export default function ProfileScreen() {
                 }
             >
                 <View style={[styles.profileCard, premiumCardShadowSoft]}>
-                    <View style={styles.avatarCircle}>
+                    <View
+                        style={[
+                            styles.avatarCircle,
+                            avatarUri ? styles.avatarCircleWithPhoto : styles.avatarCircleInitials,
+                        ]}
+                    >
                         {avatarUri ? (
                             <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
                         ) : (
@@ -129,12 +164,15 @@ export default function ProfileScreen() {
                                 <Text style={styles.usernameHandle}>@{profile.username}</Text>
                             )}
                             <View style={styles.roleBadgeWrap}>
-                                <Text style={styles.roleBadge}>{profile?.role || 'CLIENT'}</Text>
+                                <View style={styles.roleBadge}>
+                                    <ShieldCheck size={15} color={Colors.dark.success} strokeWidth={2.5} />
+                                    <Text style={styles.roleBadgeText}>{profile?.role || 'CLIENT'}</Text>
+                                </View>
                             </View>
 
                             {profile?.credits != null && (
                                 <View style={styles.creditsCard}>
-                                    <Wallet size={24} color={Colors.dark.primary} />
+                                    <Wallet size={22} color={Colors.dark.textSecondary} />
                                     <View>
                                         <Text style={styles.creditsLabel}>Credits</Text>
                                         <Text style={styles.creditsAmount}>₹{profile.credits}</Text>
@@ -145,75 +183,49 @@ export default function ProfileScreen() {
                     )}
                 </View>
 
-                <Text style={styles.sectionLabel}>Quick actions</Text>
                 <View style={[styles.actionSection, premiumCardShadowSoft]}>
+                    <Text style={styles.sectionLabelInCard}>Quick actions</Text>
                     {!loading && (
-                        <TouchableOpacity
-                            style={styles.menuItem}
+                        <ProfileMenuRow
+                            title="Contact & address"
+                            icon={Mail}
                             onPress={() => setContactModalVisible(true)}
-                            activeOpacity={0.7}
-                        >
-                            <View style={styles.menuIconMuted}>
-                                <Mail size={20} color={Colors.dark.textSecondary} />
-                            </View>
-                            <Text style={styles.menuText}>Contact & address</Text>
-                            <ChevronRight size={20} color={Colors.dark.muted} />
-                        </TouchableOpacity>
+                        />
                     )}
-                    <TouchableOpacity
-                        style={styles.menuItem}
+                    <ProfileMenuRow
+                        title="Report a bug"
+                        icon={Bug}
                         onPress={() => router.push('/(tabs)/profile/bug-report')}
-                    >
-                        <View style={styles.menuIconMuted}>
-                            <Bug size={20} color={Colors.dark.textSecondary} />
-                        </View>
-                        <Text style={styles.menuText}>Report a bug</Text>
-                        <ChevronRight size={20} color={Colors.dark.muted} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.menuItem, styles.menuItemLast]}
-                        onPress={() => router.push('/(tabs)/profile/edit')}
-                    >
-                        <View style={styles.menuIconMuted}>
-                            <Pencil size={20} color={Colors.dark.textSecondary} />
-                        </View>
-                        <Text style={styles.menuText}>Edit profile</Text>
-                        <ChevronRight size={20} color={Colors.dark.muted} />
-                    </TouchableOpacity>
+                        last={loading}
+                    />
+                    {!loading && (
+                        <ProfileMenuRow
+                            title="Edit profile"
+                            icon={Pencil}
+                            onPress={() => router.push('/(tabs)/profile/edit')}
+                            last
+                        />
+                    )}
                 </View>
 
-                <Text style={styles.sectionLabel}>Legal</Text>
                 <View style={[styles.actionSection, premiumCardShadowSoft]}>
-                    <TouchableOpacity
-                        style={styles.menuItem}
+                    <Text style={styles.sectionLabelInCard}>Legal</Text>
+                    <ProfileMenuRow
+                        title="Privacy policy"
+                        icon={Shield}
                         onPress={() => router.push(`/(tabs)/profile/legal/${LEGAL_SLUGS.PRIVACY}`)}
-                    >
-                        <View style={styles.menuIconMuted}>
-                            <Shield size={20} color={Colors.dark.textSecondary} />
-                        </View>
-                        <Text style={styles.menuText}>Privacy policy</Text>
-                        <ChevronRight size={20} color={Colors.dark.muted} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.menuItem}
+                    />
+                    <ProfileMenuRow
+                        title="Terms & conditions"
+                        icon={FileText}
                         onPress={() => router.push(`/(tabs)/profile/legal/${LEGAL_SLUGS.TERMS}`)}
-                    >
-                        <View style={styles.menuIconMuted}>
-                            <FileText size={20} color={Colors.dark.textSecondary} />
-                        </View>
-                        <Text style={styles.menuText}>Terms & conditions</Text>
-                        <ChevronRight size={20} color={Colors.dark.muted} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.menuItem, styles.menuItemLast]}
+                    />
+                    <ProfileMenuRow
+                        title="Refund & cancellation"
+                        icon={RefreshCw}
                         onPress={() => router.push(`/(tabs)/profile/legal/${LEGAL_SLUGS.REFUND}`)}
-                    >
-                        <View style={styles.menuIconMuted}>
-                            <RefreshCw size={20} color={Colors.dark.textSecondary} />
-                        </View>
-                        <Text style={styles.menuText}>Refund & cancellation</Text>
-                        <ChevronRight size={20} color={Colors.dark.muted} />
-                    </TouchableOpacity>
+                        last
+                    />
                 </View>
 
                 <View style={[styles.actionSection, styles.signOutSection, premiumCardShadowSoft]}>
@@ -221,7 +233,10 @@ export default function ProfileScreen() {
                         <View style={styles.menuIconDanger}>
                             <LogOut size={20} color={Colors.dark.danger} />
                         </View>
-                        <Text style={[styles.menuText, styles.menuTextDanger]}>Sign out</Text>
+                        <View style={styles.menuItemBody}>
+                            <Text style={[styles.menuItemTitle, styles.menuItemTitleDanger]}>Sign out</Text>
+                        </View>
+                        <ChevronRight size={20} color={Colors.dark.muted} />
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -361,8 +376,8 @@ const styles = StyleSheet.create({
     profileCard: {
         alignItems: 'center',
         backgroundColor: Colors.dark.cardElevated,
-        borderRadius: 24,
-        padding: 26,
+        borderRadius: 28,
+        padding: 28,
         marginBottom: 22,
         borderWidth: 1,
         borderColor: Colors.dark.border,
@@ -371,13 +386,18 @@ const styles = StyleSheet.create({
         width: AVATAR_SIZE,
         height: AVATAR_SIZE,
         borderRadius: AVATAR_SIZE / 2,
-        borderWidth: 2,
-        borderColor: Colors.dark.primaryBorder,
-        backgroundColor: Colors.dark.primaryMuted,
         overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 18,
+    },
+    avatarCircleInitials: {
+        backgroundColor: Colors.dark.primary,
+    },
+    avatarCircleWithPhoto: {
+        backgroundColor: Colors.dark.input,
+        borderWidth: 1,
+        borderColor: Colors.dark.borderLight,
     },
     avatarImage: {
         width: '100%',
@@ -386,7 +406,7 @@ const styles = StyleSheet.create({
     avatarInitials: {
         fontSize: 30,
         fontWeight: '800',
-        color: Colors.dark.primary,
+        color: Colors.dark.primaryForeground,
         letterSpacing: -0.8,
     },
     username: {
@@ -405,30 +425,34 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     roleBadge: {
-        fontSize: 11,
-        fontWeight: '800',
-        color: Colors.dark.primary,
-        backgroundColor: Colors.dark.primaryMuted,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
         paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingVertical: 7,
         borderRadius: 999,
-        overflow: 'hidden',
-        letterSpacing: 0.6,
+        backgroundColor: 'rgba(48, 209, 88, 0.12)',
         borderWidth: 1,
-        borderColor: Colors.dark.primaryBorder,
+        borderColor: 'rgba(48, 209, 88, 0.45)',
+    },
+    roleBadgeText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: Colors.dark.success,
+        letterSpacing: 0.2,
     },
     creditsCard: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 14,
-        backgroundColor: Colors.dark.primaryMuted,
+        backgroundColor: Colors.dark.backgroundSecondary,
         paddingHorizontal: 18,
         paddingVertical: 14,
         borderRadius: 16,
-        marginBottom: 24,
+        marginBottom: 4,
         width: '100%',
         borderWidth: 1,
-        borderColor: Colors.dark.primaryBorder,
+        borderColor: Colors.dark.border,
     },
     creditsLabel: {
         fontSize: 12,
@@ -437,7 +461,7 @@ const styles = StyleSheet.create({
     creditsAmount: {
         fontSize: 22,
         fontWeight: '800',
-        color: Colors.dark.primary,
+        color: Colors.dark.text,
         letterSpacing: -0.3,
     },
     modalRoot: {
@@ -551,58 +575,64 @@ const styles = StyleSheet.create({
     },
     actionSection: {
         backgroundColor: Colors.dark.cardElevated,
-        borderRadius: 20,
+        borderRadius: 28,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: Colors.dark.border,
+        marginBottom: 22,
     },
-    sectionLabel: {
+    sectionLabelInCard: {
         fontSize: 12,
         fontWeight: '700',
         color: Colors.dark.textSecondary,
         textTransform: 'uppercase',
         letterSpacing: 1,
-        marginBottom: 10,
-        marginTop: 4,
+        paddingHorizontal: 18,
+        paddingTop: 18,
+        paddingBottom: 10,
     },
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 18,
         borderBottomWidth: 1,
         borderBottomColor: Colors.dark.border,
     },
     menuItemLast: {
         borderBottomWidth: 0,
     },
-    menuIconMuted: {
-        width: 40,
-        height: 40,
+    menuIconTile: {
+        width: 44,
+        height: 44,
         borderRadius: 12,
-        backgroundColor: Colors.dark.backgroundSecondary,
+        backgroundColor: Colors.dark.card,
         alignItems: 'center',
         justifyContent: 'center',
     },
     menuIconDanger: {
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         borderRadius: 12,
         backgroundColor: 'rgba(255, 69, 58, 0.12)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    menuText: {
-        fontSize: 16,
+    menuItemBody: {
+        flex: 1,
         marginLeft: 14,
+        justifyContent: 'center',
+    },
+    menuItemTitle: {
+        fontSize: 17,
         fontWeight: '600',
         color: Colors.dark.text,
-        flex: 1,
+        letterSpacing: -0.2,
     },
-    menuTextDanger: {
+    menuItemTitleDanger: {
         color: Colors.dark.danger,
     },
     signOutSection: {
-        marginTop: 16,
+        marginTop: 0,
     },
 });
