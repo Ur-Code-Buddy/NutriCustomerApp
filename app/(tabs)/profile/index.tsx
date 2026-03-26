@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
+    Bug,
     ChevronRight,
     FileText,
     LogOut,
@@ -134,6 +135,16 @@ export default function ProfileScreen() {
                             <ChevronRight size={20} color={Colors.dark.muted} />
                         </TouchableOpacity>
                     )}
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => router.push('/(tabs)/profile/bug-report')}
+                    >
+                        <View style={styles.menuIconMuted}>
+                            <Bug size={20} color={Colors.dark.textSecondary} />
+                        </View>
+                        <Text style={styles.menuText}>Report a bug</Text>
+                        <ChevronRight size={20} color={Colors.dark.muted} />
+                    </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.menuItem, styles.menuItemLast]}
                         onPress={() => router.push('/(tabs)/profile/edit')}
