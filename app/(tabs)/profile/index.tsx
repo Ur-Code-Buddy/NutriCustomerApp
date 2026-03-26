@@ -10,12 +10,12 @@ import {
     Phone,
     RefreshCw,
     Shield,
-    UserCircle,
     Wallet,
 } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
+    Image,
     Modal,
     Pressable,
     RefreshControl,
@@ -36,6 +36,23 @@ import {
 import { useTabBarContentPadding } from '../../../hooks/useTabBarContentPadding';
 import { userService } from '../../../services/api';
 import { LEGAL_SLUGS } from '../../../constants/legalDocuments';
+
+const AVATAR_SIZE = 80;
+
+function profilePictureUri(p: Record<string, unknown> | null | undefined): string | null {
+    if (!p) return null;
+    for (const key of ['avatar_url', 'image_url', 'profile_image', 'photo_url'] as const) {
+        const v = p[key];
+        if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    return null;
+}
+
+function initialsFromDisplayName(name: string): string {
+    const t = name.trim();
+    if (!t) return '?';
+    return t.slice(0, 2).toUpperCase();
+}
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -73,6 +90,10 @@ export default function ProfileScreen() {
         fetchProfile();
     }, []);
 
+    const avatarSource = profile ?? user;
+    const avatarUri = profilePictureUri(avatarSource);
+    const avatarName = avatarSource?.name || avatarSource?.username || 'User';
+
     return (
         <View style={styles.container}>
             <View style={[styles.headerBar, { paddingTop: insets.top + 8 }]}>
@@ -89,10 +110,14 @@ export default function ProfileScreen() {
                 }
             >
                 <View style={[styles.profileCard, premiumCardShadowSoft]}>
-                    <View style={styles.avatarRing}>
-                        <View style={styles.avatarContainer}>
-                            <UserCircle size={76} color={Colors.dark.text} strokeWidth={1.2} />
-                        </View>
+                    <View style={styles.avatarCircle}>
+                        {avatarUri ? (
+                            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                        ) : (
+                            <Text style={styles.avatarInitials} numberOfLines={1}>
+                                {initialsFromDisplayName(avatarName)}
+                            </Text>
+                        )}
                     </View>
 
                     {loading ? (
@@ -128,10 +153,10 @@ export default function ProfileScreen() {
                             onPress={() => setContactModalVisible(true)}
                             activeOpacity={0.7}
                         >
-                            <View style={styles.menuIconPrimary}>
-                                <Mail size={20} color={Colors.dark.primary} />
+                            <View style={styles.menuIconMuted}>
+                                <Mail size={20} color={Colors.dark.textSecondary} />
                             </View>
-                            <Text style={[styles.menuText, styles.menuTextPrimary]}>Contact & address</Text>
+                            <Text style={styles.menuText}>Contact & address</Text>
                             <ChevronRight size={20} color={Colors.dark.muted} />
                         </TouchableOpacity>
                     )}
@@ -149,10 +174,10 @@ export default function ProfileScreen() {
                         style={[styles.menuItem, styles.menuItemLast]}
                         onPress={() => router.push('/(tabs)/profile/edit')}
                     >
-                        <View style={styles.menuIconPrimary}>
-                            <Pencil size={20} color={Colors.dark.primary} />
+                        <View style={styles.menuIconMuted}>
+                            <Pencil size={20} color={Colors.dark.textSecondary} />
                         </View>
-                        <Text style={[styles.menuText, styles.menuTextPrimary]}>Edit profile</Text>
+                        <Text style={styles.menuText}>Edit profile</Text>
                         <ChevronRight size={20} color={Colors.dark.muted} />
                     </TouchableOpacity>
                 </View>
@@ -342,17 +367,27 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: Colors.dark.border,
     },
-    avatarRing: {
-        padding: 4,
-        borderRadius: 999,
+    avatarCircle: {
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
         borderWidth: 2,
         borderColor: Colors.dark.primaryBorder,
         backgroundColor: Colors.dark.primaryMuted,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
         marginBottom: 18,
     },
-    avatarContainer: {
-        borderRadius: 999,
-        overflow: 'hidden',
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+    },
+    avatarInitials: {
+        fontSize: 30,
+        fontWeight: '800',
+        color: Colors.dark.primary,
+        letterSpacing: -0.8,
     },
     username: {
         fontSize: 26,
@@ -541,16 +576,6 @@ const styles = StyleSheet.create({
     menuItemLast: {
         borderBottomWidth: 0,
     },
-    menuIconPrimary: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: Colors.dark.primaryMuted,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: Colors.dark.primaryBorder,
-    },
     menuIconMuted: {
         width: 40,
         height: 40,
@@ -573,9 +598,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: Colors.dark.text,
         flex: 1,
-    },
-    menuTextPrimary: {
-        color: Colors.dark.primary,
     },
     menuTextDanger: {
         color: Colors.dark.danger,
