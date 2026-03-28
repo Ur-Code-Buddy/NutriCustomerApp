@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import DeliveryTrackingCard from '../../components/DeliveryTrackingCard';
 import { Colors } from '../../constants/Colors';
 import { orderService } from '../../services/api';
 
@@ -145,7 +146,7 @@ export default function OrderDetailScreen() {
                     </View>
                 )}
 
-                {status === 'OUT_FOR_DELIVERY' && driver && (
+                {(status === 'PICKED_UP' || status === 'OUT_FOR_DELIVERY') && driver && (
                     <View style={styles.card}>
                         <Text style={styles.sectionTitle}>Delivery driver</Text>
                         <Text style={styles.sectionValue}>{driver.name}</Text>
@@ -154,6 +155,10 @@ export default function OrderDetailScreen() {
                             <Text style={styles.callDriverText}>Call driver</Text>
                         </TouchableOpacity>
                     </View>
+                )}
+
+                {(status === 'PICKED_UP' || status === 'OUT_FOR_DELIVERY') && (
+                    <DeliveryTrackingCard orderId={String(id)} status={status} />
                 )}
 
                 <View style={styles.card}>

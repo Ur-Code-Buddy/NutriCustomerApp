@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { emitAuthFailure } from '../lib/authFailure';
+import type { OrderTrackingSnapshot } from '../types/orderTracking';
 
 const API_URL =
     (typeof process !== 'undefined' && process.env.EXPO_PUBLIC_API_BASE_URL) ||
@@ -186,7 +187,12 @@ export const orderService = {
     getById: async (id: string) => {
         const response = await api.get(`/orders/${id}`);
         return response.data;
-    }
+    },
+    /** GET /orders/:id/tracking — live route snapshot (client: PICKED_UP / OUT_FOR_DELIVERY only). */
+    getTracking: async (id: string): Promise<OrderTrackingSnapshot> => {
+        const response = await api.get<OrderTrackingSnapshot>(`/orders/${id}/tracking`);
+        return response.data;
+    },
 };
 
 /** Same shape as POST /orders — used for POST /payments/initiate and confirm `originalDto`. */
