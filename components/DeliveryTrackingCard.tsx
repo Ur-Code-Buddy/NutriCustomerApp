@@ -1,154 +1,46 @@
-import { Navigation } from 'lucide-react-native';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import { useRouter } from 'expo-router';
+import { Maximize2, Navigation } from 'lucide-react-native';
+import React from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { premiumCardShadowSoft } from '../constants/appChrome';
 import { Colors } from '../constants/Colors';
-import {
-    CLIENT_TRACKING_POLL_STATUSES,
-    formatDistanceMeters,
-    formatDurationSeconds,
-    isClientTrackingOrderStatus,
-    TRACKING_POLL_MS,
-} from '../constants/deliveryTracking';
-import { decodeEncodedPolyline } from '../helpers/decodePolyline';
-import { orderService } from '../services/api';
-import type { OrderStatus, OrderTrackingSnapshot } from '../types/orderTracking';
+import { CLIENT_TRACKING_POLL_STATUSES } from '../constants/deliveryTracking';
+import { useOrderTracking } from '../hooks/useOrderTracking';
+import type { OrderStatus } from '../types/orderTracking';
 
 type Props = {
     orderId: string;
     status: OrderStatus | string;
 };
 
-function regionForPoints(points: { latitude: number; longitude: number }[]): Region | null {
-    if (points.length === 0) return null;
-    let minLat = points[0].latitude;
-    let maxLat = minLat;
-    let minLng = points[0].longitude;
-    let maxLng = minLng;
-    for (const p of points) {
-        minLat = Math.min(minLat, p.latitude);
-        maxLat = Math.max(maxLat, p.latitude);
-        minLng = Math.min(minLng, p.longitude);
-        maxLng = Math.max(maxLng, p.longitude);
-    }
-    const midLat = (minLat + maxLat) / 2;
-    const midLng = (minLng + maxLng) / 2;
-    const latDelta = Math.max((maxLat - minLat) * 1.35, 0.015);
-    const lngDelta = Math.max((maxLng - minLng) * 1.35, 0.015);
-    return {
-        latitude: midLat,
-        longitude: midLng,
-        latitudeDelta: latDelta,
-        longitudeDelta: lngDelta,
-    };
-}
-
 export default function DeliveryTrackingCard({ orderId, status }: Props) {
-    const [tracking, setTracking] = useState<OrderTrackingSnapshot | null>(null);
+    const router = useRouter();
     const normalized = String(status || '').toUpperCase() as OrderStatus;
     const showTrackingUi = CLIENT_TRACKING_POLL_STATUSES.includes(normalized);
 
-    useEffect(() => {
-        if (!showTrackingUi) {
-            setTracking(null);
-            return;
-        }
-
-        let cancelled = false;
-        let intervalId: ReturnType<typeof setInterval> | null = null;
-
-        const stopPolling = () => {
-            if (intervalId != null) {
-                clearInterval(intervalId);
-                intervalId = null;
-            }
-        };
-
-        const tick = async () => {
-            try {
-                const snap = await orderService.getTracking(orderId);
-                if (cancelled) return;
-                /** Guide §6: stop when order leaves trackable states (e.g. DELIVERED) even if parent order payload is stale. */
-                if (!CLIENT_TRACKING_POLL_STATUSES.includes(snap.order_status)) {
-                    setTracking(snap);
-                    stopPolling();
-                    return;
-                }
-                setTracking(snap);
-            } catch {
-                /* 400/403/404 or network — keep last snapshot if any */
-            }
-        };
-
-        void tick();
-        intervalId = setInterval(() => void tick(), TRACKING_POLL_MS);
-        return () => {
-            cancelled = true;
-            stopPolling();
-        };
-    }, [orderId, showTrackingUi]);
-
-    const polylineCoordinates = useMemo(() => {
-        const enc = tracking?.route?.encodedPolyline;
-        if (!enc) return [];
-        try {
-            return decodeEncodedPolyline(enc);
-        } catch {
-            return [];
-        }
-    }, [tracking?.route?.encodedPolyline]);
-
-    const mapRegion = useMemo(() => {
-        const pts: { latitude: number; longitude: number }[] = [];
-        if (tracking?.driver_position) {
-            pts.push({
-                latitude: tracking.driver_position.lat,
-                longitude: tracking.driver_position.lng,
-            });
-        }
-        if (tracking?.destination) {
-            pts.push({
-                latitude: tracking.destination.latitude,
-                longitude: tracking.destination.longitude,
-            });
-        }
-        if (polylineCoordinates.length > 1) {
-            return regionForPoints(polylineCoordinates);
-        }
-        return regionForPoints(pts);
-    }, [tracking?.destination, tracking?.driver_position, polylineCoordinates]);
+    const {
+        tracking,
+        polylineCoordinates,
+        mapRegion,
+        liveTrackingEndedByServer,
+        routeHint,
+        routeFallback,
+        routeSummary,
+        phaseLabel,
+    } = useOrderTracking(orderId, showTrackingUi);
 
     if (!showTrackingUi) {
         return null;
     }
 
-    const routeHint = tracking?.route_error ?? null;
-    const route = tracking?.route ?? null;
-    /** Snapshot says live tracking ended server-side (guide §6 — stop on DELIVERED). */
-    const liveTrackingEndedByServer =
-        tracking != null && !isClientTrackingOrderStatus(tracking.order_status);
-    const routeFallback =
-        route == null && !routeHint && tracking?.driver_position
-            ? 'Route unavailable — driver location may still update.'
-            : null;
-    const etaClock =
-        route?.eta != null
-            ? new Date(route.eta).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-              })
-            : null;
-    const routeSummary =
-        route != null
-            ? [
-                  formatDistanceMeters(route.distanceMeters),
-                  etaClock ? `ETA ${etaClock}` : formatDurationSeconds(route.durationSeconds),
-              ].join(' · ')
-            : null;
+    const openFullMap = () => {
+        router.push(`/order/${orderId}/tracking`);
+    };
 
     if (Platform.OS === 'web') {
         return (
-            <View style={styles.card}>
+            <View style={[styles.card, premiumCardShadowSoft]}>
                 <View style={styles.sectionHeader}>
                     <Navigation size={20} color={Colors.dark.primary} />
                     <Text style={styles.sectionTitle}>Track delivery</Text>
@@ -162,10 +54,23 @@ export default function DeliveryTrackingCard({ orderId, status }: Props) {
     }
 
     return (
-        <View style={styles.card}>
-            <View style={styles.sectionHeader}>
-                <Navigation size={20} color={Colors.dark.primary} />
-                <Text style={styles.sectionTitle}>Track delivery</Text>
+        <View style={[styles.card, premiumCardShadowSoft]}>
+            <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionHeader}>
+                    <Navigation size={20} color={Colors.dark.primary} />
+                    <Text style={styles.sectionTitle}>Track delivery</Text>
+                </View>
+                {!liveTrackingEndedByServer ? (
+                    <TouchableOpacity
+                        style={styles.expandBtn}
+                        onPress={openFullMap}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        activeOpacity={0.7}
+                    >
+                        <Maximize2 size={18} color={Colors.dark.primary} />
+                        <Text style={styles.expandBtnText}>Full map</Text>
+                    </TouchableOpacity>
+                ) : null}
             </View>
 
             {liveTrackingEndedByServer ? (
@@ -181,77 +86,102 @@ export default function DeliveryTrackingCard({ orderId, status }: Props) {
             {routeSummary ? <Text style={styles.eta}>{routeSummary}</Text> : null}
 
             {mapRegion ? (
-                <MapView
-                    style={styles.map}
-                    provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-                    initialRegion={mapRegion}
-                    region={mapRegion}
-                    showsUserLocation
-                    showsMyLocationButton={false}
-                >
-                    {polylineCoordinates.length > 1 ? (
-                        <Polyline
-                            coordinates={polylineCoordinates}
-                            strokeColor={Colors.dark.primary}
-                            strokeWidth={4}
-                        />
-                    ) : null}
-                    {tracking?.driver_position ? (
-                        <Marker
-                            coordinate={{
-                                latitude: tracking.driver_position.lat,
-                                longitude: tracking.driver_position.lng,
-                            }}
-                            title="Driver"
-                            pinColor={Colors.dark.primary}
-                            {...(tracking.driver_position.heading != null
-                                ? { rotation: tracking.driver_position.heading, flat: true as const }
-                                : {})}
-                        />
-                    ) : null}
-                    {tracking?.destination ? (
-                        <Marker
-                            coordinate={{
-                                latitude: tracking.destination.latitude,
-                                longitude: tracking.destination.longitude,
-                            }}
-                            title={tracking.phase === 'TO_PICKUP' ? 'Pickup' : 'Your address'}
-                            pinColor={Colors.dark.success}
-                        />
-                    ) : null}
-                </MapView>
+                <TouchableOpacity activeOpacity={0.95} onPress={openFullMap} disabled={liveTrackingEndedByServer}>
+                    <MapView
+                        style={styles.map}
+                        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                        initialRegion={mapRegion}
+                        region={mapRegion}
+                        showsUserLocation
+                        showsMyLocationButton={false}
+                        scrollEnabled={false}
+                        zoomEnabled={false}
+                        pitchEnabled={false}
+                        rotateEnabled={false}
+                    >
+                        {polylineCoordinates.length > 1 ? (
+                            <Polyline
+                                coordinates={polylineCoordinates}
+                                strokeColor={Colors.dark.primary}
+                                strokeWidth={4}
+                            />
+                        ) : null}
+                        {tracking?.driver_position ? (
+                            <Marker
+                                coordinate={{
+                                    latitude: tracking.driver_position.lat,
+                                    longitude: tracking.driver_position.lng,
+                                }}
+                                title="Driver"
+                                pinColor={Colors.dark.primary}
+                                {...(tracking.driver_position.heading != null
+                                    ? { rotation: tracking.driver_position.heading, flat: true as const }
+                                    : {})}
+                            />
+                        ) : null}
+                        {tracking?.destination ? (
+                            <Marker
+                                coordinate={{
+                                    latitude: tracking.destination.latitude,
+                                    longitude: tracking.destination.longitude,
+                                }}
+                                title={tracking.phase === 'TO_PICKUP' ? 'Pickup' : 'Your address'}
+                                pinColor={Colors.dark.success}
+                            />
+                        ) : null}
+                    </MapView>
+                </TouchableOpacity>
             ) : (
                 <Text style={styles.muted}>Waiting for driver location or destination…</Text>
             )}
 
-            {tracking?.phase ? (
-                <Text style={styles.phase}>
-                    {tracking.phase === 'TO_PICKUP' ? 'Driver heading to kitchen' : 'Driver heading to you'}
-                </Text>
-            ) : null}
+            {phaseLabel ? <Text style={styles.phase}>{phaseLabel}</Text> : null}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: Colors.dark.card,
-        borderRadius: 16,
-        padding: 16,
+        backgroundColor: Colors.dark.cardElevated,
+        borderRadius: 20,
+        padding: 18,
         marginBottom: 16,
         borderWidth: 1,
         borderColor: Colors.dark.border,
     },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+        gap: 8,
+    },
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
         gap: 8,
+        flex: 1,
     },
     sectionTitle: {
         fontSize: 16,
         color: Colors.dark.text,
         fontWeight: 'bold',
+    },
+    expandBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: Colors.dark.primaryBorder,
+        backgroundColor: Colors.dark.cardElevated,
+    },
+    expandBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: Colors.dark.primary,
     },
     liveEnded: {
         color: Colors.dark.success,
