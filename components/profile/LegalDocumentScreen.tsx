@@ -2,6 +2,8 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SCREEN_PADDING_H } from '../../constants/appChrome';
 import { Colors } from '../../constants/Colors';
 import type { LegalDocument } from '../../constants/legalDocuments';
 import {
@@ -16,13 +18,14 @@ interface LegalDocumentScreenProps {
 
 export function LegalDocumentScreen({ document: doc }: LegalDocumentScreenProps) {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const tabBarScrollProps = useTabBarScrollProps();
     const tabBarPadBottom = useTabBarContentPadding();
     useTabBarScrollResetOnFocus();
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
                 <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
                     <ChevronLeft size={28} color={Colors.dark.text} strokeWidth={2} />
                 </TouchableOpacity>
@@ -60,14 +63,13 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Colors.dark.background,
-        paddingTop: 56,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingBottom: 16,
+        paddingHorizontal: SCREEN_PADDING_H,
+        paddingBottom: 14,
     },
     headerTitle: {
         flex: 1,
@@ -84,7 +86,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingHorizontal: 24,
+        paddingHorizontal: SCREEN_PADDING_H,
     },
     lastUpdated: {
         fontSize: 13,

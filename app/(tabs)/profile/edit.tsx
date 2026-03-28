@@ -13,6 +13,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SCREEN_PADDING_H } from '../../../constants/appChrome';
 import { Colors } from '../../../constants/Colors';
 import {
     useTabBarScrollProps,
@@ -23,6 +25,7 @@ import { userService } from '../../../services/api';
 
 export default function EditProfileScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const tabBarScrollProps = useTabBarScrollProps();
     const tabBarPadBottom = useTabBarContentPadding();
     useTabBarScrollResetOnFocus();
@@ -100,11 +103,14 @@ export default function EditProfileScreen() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
                 <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
                     <ChevronLeft size={28} color={Colors.dark.text} strokeWidth={2} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Edit Profile</Text>
+                <View style={styles.headerTitleBlock}>
+                    <Text style={styles.headerEyebrow}>Account</Text>
+                    <Text style={styles.headerTitle}>Edit profile</Text>
+                </View>
                 <View style={{ width: 28 }} />
             </View>
 
@@ -181,7 +187,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Colors.dark.background,
-        paddingTop: 56,
     },
     flex: {
         flex: 1,
@@ -196,29 +201,42 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingBottom: 16,
+        paddingHorizontal: SCREEN_PADDING_H,
+        paddingBottom: 14,
+    },
+    headerTitleBlock: {
+        alignItems: 'center',
+    },
+    headerEyebrow: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: Colors.dark.primary,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 19,
+        fontWeight: '800',
         color: Colors.dark.text,
+        letterSpacing: -0.3,
+        marginTop: 2,
     },
     scrollContent: {
-        paddingHorizontal: 24,
+        paddingHorizontal: SCREEN_PADDING_H,
     },
     label: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '700',
         color: Colors.dark.textSecondary,
         marginBottom: 8,
-        marginTop: 16,
+        marginTop: 18,
+        letterSpacing: 0.3,
     },
     input: {
-        backgroundColor: Colors.dark.card,
+        backgroundColor: Colors.dark.cardElevated,
         borderWidth: 1,
         borderColor: Colors.dark.border,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingHorizontal: 16,
         paddingVertical: 14,
         fontSize: 16,
@@ -230,10 +248,12 @@ const styles = StyleSheet.create({
     },
     saveBtn: {
         backgroundColor: Colors.dark.primary,
-        borderRadius: 14,
+        borderRadius: 999,
         paddingVertical: 16,
         marginTop: 32,
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: Colors.dark.primaryBorder,
     },
     saveBtnDisabled: {
         opacity: 0.7,

@@ -12,7 +12,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DeliveryTrackingCard from '../../components/DeliveryTrackingCard';
+import { premiumCardShadowSoft, SCREEN_PADDING_H } from '../../constants/appChrome';
 import { Colors } from '../../constants/Colors';
 import { orderService } from '../../services/api';
 
@@ -39,6 +41,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function OrderDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -103,16 +106,19 @@ export default function OrderDetailScreen() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
                 <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
                     <ChevronLeft size={28} color={Colors.dark.text} strokeWidth={2} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Order details</Text>
+                <View style={styles.headerTitles}>
+                    <Text style={styles.headerEyebrow}>Order</Text>
+                    <Text style={styles.headerTitle}>Details</Text>
+                </View>
                 <View style={{ width: 28 }} />
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <View style={styles.card}>
+                <View style={[styles.card, premiumCardShadowSoft]}>
                     <View style={styles.statusRow}>
                         <Text style={styles.kitchenName}>{kitchen.name || 'Kitchen'}</Text>
                         <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
@@ -126,7 +132,7 @@ export default function OrderDetailScreen() {
                 </View>
 
                 {kitchen.name && (
-                    <View style={styles.card}>
+                    <View style={[styles.card, premiumCardShadowSoft]}>
                         <Text style={styles.sectionTitle}>Kitchen</Text>
                         <Text style={styles.sectionValue}>{kitchen.name}</Text>
                         {kitchen.phone && (
@@ -147,7 +153,7 @@ export default function OrderDetailScreen() {
                 )}
 
                 {(status === 'PICKED_UP' || status === 'OUT_FOR_DELIVERY') && driver && (
-                    <View style={styles.card}>
+                    <View style={[styles.card, premiumCardShadowSoft]}>
                         <Text style={styles.sectionTitle}>Delivery driver</Text>
                         <Text style={styles.sectionValue}>{driver.name}</Text>
                         <TouchableOpacity style={styles.callDriverBtn} onPress={() => openCall(driver.phone_number)}>
@@ -161,7 +167,7 @@ export default function OrderDetailScreen() {
                     <DeliveryTrackingCard orderId={String(id)} status={status} />
                 )}
 
-                <View style={styles.card}>
+                <View style={[styles.card, premiumCardShadowSoft]}>
                     <Text style={styles.sectionTitle}>Items</Text>
                     {order.items?.map((oi: any, i: number) => (
                         <View key={i} style={styles.itemRow}>
@@ -178,7 +184,7 @@ export default function OrderDetailScreen() {
                     ))}
                 </View>
 
-                <View style={styles.card}>
+                <View style={[styles.card, premiumCardShadowSoft]}>
                     <Text style={styles.sectionTitle}>Fees</Text>
                     <View style={styles.feeRow}>
                         <Text style={styles.feeLabel}>Items subtotal</Text>
@@ -206,7 +212,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Colors.dark.background,
-        paddingTop: 56,
     },
     centered: {
         flex: 1,
@@ -218,22 +223,34 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingBottom: 16,
+        paddingHorizontal: SCREEN_PADDING_H,
+        paddingBottom: 14,
+    },
+    headerTitles: {
+        alignItems: 'center',
+    },
+    headerEyebrow: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: Colors.dark.primary,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
     },
     headerTitle: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: '800',
         color: Colors.dark.text,
+        letterSpacing: -0.4,
+        marginTop: 2,
     },
     scrollContent: {
-        paddingHorizontal: 24,
+        paddingHorizontal: SCREEN_PADDING_H,
         paddingBottom: 40,
     },
     card: {
-        backgroundColor: Colors.dark.card,
-        borderRadius: 16,
-        padding: 16,
+        backgroundColor: Colors.dark.cardElevated,
+        borderRadius: 20,
+        padding: 18,
         marginBottom: 16,
         borderWidth: 1,
         borderColor: Colors.dark.border,
@@ -250,13 +267,16 @@ const styles = StyleSheet.create({
         color: Colors.dark.text,
     },
     statusBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
     },
     statusText: {
-        fontSize: 12,
-        fontWeight: 'bold',
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 0.3,
     },
     date: {
         fontSize: 13,
@@ -264,10 +284,12 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     sectionTitle: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 12,
+        fontWeight: '800',
         color: Colors.dark.textSecondary,
-        marginBottom: 8,
+        marginBottom: 10,
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
     },
     sectionValue: {
         fontSize: 16,
@@ -297,10 +319,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         backgroundColor: Colors.dark.primary,
-        paddingHorizontal: 16,
+        paddingHorizontal: 18,
         paddingVertical: 12,
-        borderRadius: 10,
+        borderRadius: 999,
         alignSelf: 'flex-start',
+        borderWidth: 1,
+        borderColor: Colors.dark.primaryBorder,
     },
     callDriverText: {
         fontSize: 15,
@@ -315,9 +339,9 @@ const styles = StyleSheet.create({
         borderBottomColor: Colors.dark.border,
     },
     itemImage: {
-        width: 48,
-        height: 48,
-        borderRadius: 8,
+        width: 52,
+        height: 52,
+        borderRadius: 12,
         marginRight: 12,
         backgroundColor: Colors.dark.border,
     },

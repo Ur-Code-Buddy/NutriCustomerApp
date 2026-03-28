@@ -11,7 +11,9 @@ export const PILL_TAB_BAR_CONTENT_GAP = 24;
 /**
  * Minimum paddingBottom for ScrollView / FlatList on tab screens so content clears the pill.
  */
-export function tabBarContentPaddingBottom(safeAreaBottomInset: number): number {
+export function tabBarContentPaddingBottom(
+  safeAreaBottomInset: number,
+): number {
   return (
     PILL_TAB_BAR_BOTTOM_GAP +
     safeAreaBottomInset +
@@ -30,4 +32,13 @@ export function tabBarHideTranslateY(safeAreaBottomInset: number): number {
     PILL_TAB_BAR_HEIGHT +
     HIDE_SHADOW_BUFFER
   );
+}
+
+/** Cart preview pill above tab bar (Kitchens). Sync with HomeCartBanner vertical size. */
+export const HOME_CART_BANNER_HEIGHT = 64;
+export const HOME_CART_BANNER_GAP_ABOVE_TAB = 10;
+
+export function homeCartBannerExtraPadding(hasCart: boolean): number {
+  if (!hasCart) return 0;
+  return HOME_CART_BANNER_HEIGHT + HOME_CART_BANNER_GAP_ABOVE_TAB;
 }

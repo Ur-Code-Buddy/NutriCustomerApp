@@ -8,13 +8,22 @@ export interface CartItem {
   quantity: number;
 }
 
+/** Optional kitchen snapshot when adding items (shown on home cart bar). */
+export type CartKitchenMeta = {
+  name?: string | null;
+  imageUrl?: string | null;
+};
+
 interface CartContextType {
   cartItems: CartItem[];
   kitchenId: string | null;
+  kitchenName: string | null;
+  kitchenImageUrl: string | null;
   addToCart: (
     item: any,
     quantity?: number,
     kitchenId?: string,
+    kitchenMeta?: CartKitchenMeta,
   ) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
@@ -23,9 +32,16 @@ interface CartContextType {
   count: number;
 }
 
+const emptyKitchenMeta = (): { name: string | null; imageUrl: string | null } => ({
+  name: null,
+  imageUrl: null,
+});
+
 const CartContext = createContext<CartContextType>({
   cartItems: [],
   kitchenId: null,
+  kitchenName: null,
+  kitchenImageUrl: null,
   addToCart: async () => {},
   removeFromCart: async () => {},
   updateQuantity: async () => {},
@@ -40,15 +56,56 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [kitchenId, setKitchenId] = useState<string | null>(null);
+  const [kitchenName, setKitchenName] = useState<string | null>(null);
+  const [kitchenImageUrl, setKitchenImageUrl] = useState<string | null>(null);
 
-  // Load cart when user changes
   useEffect(() => {
     loadCart();
   }, [user]);
 
   const getCartKey = () => {
     if (!user) return null;
-    return `cart_${user.id || user.token}`; // Fallback to token if id missing, but per-user key is the goal
+    return `cart_${user.id || user.token}`;
+  };
+
+  const persistCart = async (
+    newItems: CartItem[],
+    newKitchenId: string | null,
+    meta: { name: string | null; imageUrl: string | null },
+  ) => {
+    setCartItems(newItems);
+    setKitchenId(newKitchenId);
+    setKitchenName(meta.name);
+    setKitchenImageUrl(meta.imageUrl);
+
+    const key = getCartKey();
+    if (!key) return;
+
+    try {
+      if (newItems.length === 0) {
+        await SecureStore.deleteItemAsync(key);
+        await SecureStore.deleteItemAsync(`${key}_kitchen_id`);
+        await SecureStore.deleteItemAsync(`${key}_kitchen_name`);
+        await SecureStore.deleteItemAsync(`${key}_kitchen_image`);
+      } else {
+        await SecureStore.setItemAsync(key, JSON.stringify(newItems));
+        if (newKitchenId) {
+          await SecureStore.setItemAsync(`${key}_kitchen_id`, newKitchenId);
+        }
+        if (meta.name) {
+          await SecureStore.setItemAsync(`${key}_kitchen_name`, meta.name);
+        } else {
+          await SecureStore.deleteItemAsync(`${key}_kitchen_name`);
+        }
+        if (meta.imageUrl) {
+          await SecureStore.setItemAsync(`${key}_kitchen_image`, meta.imageUrl);
+        } else {
+          await SecureStore.deleteItemAsync(`${key}_kitchen_image`);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to save cart", error);
+    }
   };
 
   const loadCart = async () => {
@@ -56,6 +113,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     if (!key) {
       setCartItems([]);
       setKitchenId(null);
+      setKitchenName(null);
+      setKitchenImageUrl(null);
       return;
     }
 
@@ -64,72 +123,36 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       const savedKitchenId = await SecureStore.getItemAsync(
         `${key}_kitchen_id`,
       );
+      const savedKitchenName = await SecureStore.getItemAsync(
+        `${key}_kitchen_name`,
+      );
+      const savedKitchenImage = await SecureStore.getItemAsync(
+        `${key}_kitchen_image`,
+      );
 
       if (savedCart && savedKitchenId) {
         const parsedCart = JSON.parse(savedCart);
-        // The saved cart might be just { itemId: quantity } or explicit items.
-        // based on previous implementation it was { itemId: quantity }.
-        // But wait, the previous implementation in `cart.tsx` fetched menu items again.
-        // To minimize conflicting with old data structure, let's start fresh or check structure.
-        // Actually, I'll redesign to store full items + quantity to avoid refetching everything constantly,
-        // OR I can store { itemId: quantity } and fetch.
-        // Fetching ensures price freshness. Storing avoids network.
-        // Let's store compact { itemId, quantity } and maybe cached basic info.
-
-        // For robustness, let's stick to the previous pattern: store ID+Qty, fetch details.
-        // BUT `cart.tsx` logic was: fetch ALL menu items for kitchen, then map.
-        // This is heavy if menu is large.
-        // Better: Store { id, quantity, price, name } at least.
-        // Let's check what `kitchen/[id].tsx` was doing. It was storing `{ itemId: quantity }`.
-
-        // I will try to support the legacy format if exists, but migrate to array of objects.
-        // Actually, user said "work on the cart, its not well implemented".
-        // So I can define my own storage format.
-
-        // Let's store: { kitchenId, items: [{ item, quantity }] }
-        // Wait, I am restricted to what `SecureStore` can hold (string).
-
-        // Reading logic from scratch:
-        // If I find old format (just object of numbers), I'll try to convert or just clear it.
-        // Since user wants "new user new cart", and we are changing keys, old keys `cart` and `cart_kitchen_id` (global) are ignored for logged in users.
-        // This implicitly solves "new cart" for existing users too if they login.
-
-        // Let's stick to storing full `cartItems` array stringified.
-        // It's easier.
         setCartItems(parsedCart);
         setKitchenId(savedKitchenId);
+        setKitchenName(savedKitchenName || null);
+        setKitchenImageUrl(savedKitchenImage || null);
       } else {
         setCartItems([]);
         setKitchenId(null);
+        setKitchenName(null);
+        setKitchenImageUrl(null);
       }
     } catch (error) {
       console.error("Failed to load cart", error);
     }
   };
 
-  const saveCart = async (
-    newItems: CartItem[],
-    newKitchenId: string | null,
+  const addToCart = async (
+    item: any,
+    quantity = 1,
+    kId?: string,
+    kitchenMeta?: CartKitchenMeta,
   ) => {
-    const key = getCartKey();
-    if (!key) return;
-
-    try {
-      if (newItems.length === 0) {
-        await SecureStore.deleteItemAsync(key);
-        await SecureStore.deleteItemAsync(`${key}_kitchen_id`);
-      } else {
-        await SecureStore.setItemAsync(key, JSON.stringify(newItems));
-        if (newKitchenId) {
-          await SecureStore.setItemAsync(`${key}_kitchen_id`, newKitchenId);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to save cart", error);
-    }
-  };
-
-  const addToCart = async (item: any, quantity = 1, kId?: string) => {
     if (!user) {
       Alert.alert(
         "Please login",
@@ -139,14 +162,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     if (!kId) {
-      // If kId is missing, we can try to use existing kitchenId if exists, or just warn.
-      // For now, let's assume if not passed, we might be increasing quantity of existing item?
-      // But existing item check is inside addItemHelper.
-      // Let's just log warn and return or proceed if we don't care about kitchen strictness for updates.
-      // But valid use case is adding from specific kitchen.
       if (!kitchenId) {
         console.warn("Adding to cart without kitchenId");
-        // Proceeding might be dangerous for order grouping.
         return;
       }
       kId = kitchenId;
@@ -154,17 +171,19 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (kitchenId && kId !== kitchenId) {
       Alert.alert(
-        "Start new order?",
-        "You have items from another kitchen in your cart. clear them?",
+        "Replace your cart?",
+        "You can only order from one kitchen at a time. Replace the items in your cart with this kitchen?",
         [
           { text: "Cancel", style: "cancel" },
           {
-            text: "Yes",
+            text: "Replace cart",
+            style: "destructive",
             onPress: async () => {
               const newItems = [{ item, quantity }];
-              setCartItems(newItems);
-              setKitchenId(kId!); // We know kId is defined here because of check above
-              await saveCart(newItems, kId!);
+              await persistCart(newItems, kId!, {
+                name: kitchenMeta?.name ?? null,
+                imageUrl: kitchenMeta?.imageUrl ?? null,
+              });
             },
           },
         ],
@@ -172,10 +191,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    await addItemHelper(item, quantity, kId);
+    await addItemHelper(item, quantity, kId, kitchenMeta);
   };
 
-  const addItemHelper = async (item: any, quantity: number, kId: string) => {
+  const addItemHelper = async (
+    item: any,
+    quantity: number,
+    kId: string,
+    kitchenMeta?: CartKitchenMeta,
+  ) => {
     let newItems = [...cartItems];
     const existingIndex = newItems.findIndex((i) => i.item.id === item.id);
 
@@ -185,19 +209,23 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       newItems.push({ item, quantity });
     }
 
-    setCartItems(newItems);
-    setKitchenId(kId);
-    await saveCart(newItems, kId);
+    const meta = {
+      name: (kitchenMeta?.name ?? kitchenName) ?? null,
+      imageUrl: (kitchenMeta?.imageUrl ?? kitchenImageUrl) ?? null,
+    };
+
+    await persistCart(newItems, kId, meta);
   };
 
   const removeFromCart = async (itemId: string) => {
     const newItems = cartItems.filter((i) => i.item.id !== itemId);
-    setCartItems(newItems);
     if (newItems.length === 0) {
-      setKitchenId(null);
-      await saveCart([], null);
+      await persistCart([], null, emptyKitchenMeta());
     } else {
-      await saveCart(newItems, kitchenId);
+      await persistCart(newItems, kitchenId, {
+        name: kitchenName,
+        imageUrl: kitchenImageUrl,
+      });
     }
   };
 
@@ -214,18 +242,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return i;
     });
 
-    setCartItems(newItems);
-    await saveCart(newItems, kitchenId);
+    await persistCart(newItems, kitchenId, {
+      name: kitchenName,
+      imageUrl: kitchenImageUrl,
+    });
   };
 
   const clearCart = async () => {
-    setCartItems([]);
-    setKitchenId(null);
-    const key = getCartKey();
-    if (key) {
-      await SecureStore.deleteItemAsync(key);
-      await SecureStore.deleteItemAsync(`${key}_kitchen_id`);
-    }
+    await persistCart([], null, emptyKitchenMeta());
   };
 
   const totalAmount = cartItems.reduce(
@@ -239,6 +263,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       value={{
         cartItems,
         kitchenId,
+        kitchenName,
+        kitchenImageUrl,
         addToCart,
         removeFromCart,
         updateQuantity,
