@@ -51,6 +51,7 @@ export default function RegisterScreen() {
     const [showVerification, setShowVerification] = useState(false);
     const [username, setUsername] = useState('');
     const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+    const [suggestedUsername, setSuggestedUsername] = useState<string | null>(null);
     const [checkingUsername, setCheckingUsername] = useState(false);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -68,16 +69,25 @@ export default function RegisterScreen() {
         const trimmed = username.trim();
         if (!trimmed) {
             setUsernameAvailable(null);
+            setSuggestedUsername(null);
             return;
         }
         let cancelled = false;
         const t = setTimeout(async () => {
             setCheckingUsername(true);
             try {
-                const { exists } = await userService.checkUsername(trimmed);
-                if (!cancelled) setUsernameAvailable(!exists);
+                const { exists, suggested_username } = await userService.checkUsername(trimmed);
+                if (!cancelled) {
+                    setUsernameAvailable(!exists);
+                    const s =
+                        typeof suggested_username === 'string' ? suggested_username.trim() : '';
+                    setSuggestedUsername(exists && s ? s : null);
+                }
             } catch {
-                if (!cancelled) setUsernameAvailable(null);
+                if (!cancelled) {
+                    setUsernameAvailable(null);
+                    setSuggestedUsername(null);
+                }
             } finally {
                 if (!cancelled) setCheckingUsername(false);
             }
@@ -86,6 +96,7 @@ export default function RegisterScreen() {
             cancelled = true;
             clearTimeout(t);
             setUsernameAvailable(null);
+            setSuggestedUsername(null);
         };
     }, [username]);
 
@@ -326,7 +337,36 @@ export default function RegisterScreen() {
                                     )}
                                 </View>
                                 {!checkingUsername && username.trim() && usernameAvailable === false && (
-                                    <Text style={styles.usernameError}>Username not available</Text>
+                                    <>
+                                        <Text style={styles.usernameError}>Username is taken</Text>
+                                        {suggestedUsername &&
+                                            suggestedUsername !== username.trim() && (
+                                                <View style={styles.usernameSuggestionRow}>
+                                                    <Text
+                                                        style={styles.usernameSuggestionText}
+                                                        numberOfLines={1}
+                                                    >
+                                                        Try{' '}
+                                                        <Text style={styles.usernameSuggestionValue}>
+                                                            {suggestedUsername}
+                                                        </Text>
+                                                    </Text>
+                                                    <Pressable
+                                                        onPress={() => setUsername(suggestedUsername)}
+                                                        style={({ pressed }) => [
+                                                            styles.usernameUseThis,
+                                                            pressed && styles.usernameUseThisPressed,
+                                                        ]}
+                                                        accessibilityRole="button"
+                                                        accessibilityLabel={`Use suggested username ${suggestedUsername}`}
+                                                    >
+                                                        <Text style={styles.usernameUseThisLabel}>
+                                                            Use this
+                                                        </Text>
+                                                    </Pressable>
+                                                </View>
+                                            )}
+                                    </>
                                 )}
                             </View>
                             <FormField label="Email">
@@ -635,6 +675,36 @@ const styles = StyleSheet.create({
         color: Colors.dark.danger,
         marginTop: 6,
         marginLeft: 4,
+    },
+    usernameSuggestionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        marginLeft: 4,
+        gap: 8,
+    },
+    usernameSuggestionText: {
+        flex: 1,
+        minWidth: 0,
+        fontSize: 13,
+        color: Colors.dark.textSecondary,
+    },
+    usernameSuggestionValue: {
+        color: Colors.dark.text,
+        fontWeight: '600',
+    },
+    usernameUseThis: {
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 8,
+    },
+    usernameUseThisPressed: {
+        opacity: 0.7,
+    },
+    usernameUseThisLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: Colors.dark.primary,
     },
     buttonDisabled: {
         opacity: 0.5,

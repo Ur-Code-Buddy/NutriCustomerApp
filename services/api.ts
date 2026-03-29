@@ -112,6 +112,12 @@ export const authService = {
     }
 };
 
+/** GET /users/check-username/:username */
+export interface CheckUsernameResponse {
+    exists: boolean;
+    suggested_username?: string | null;
+}
+
 export const userService = {
     getProfile: async () => {
         const response = await api.get('/users/me');
@@ -119,7 +125,7 @@ export const userService = {
     },
     checkUsername: async (username: string) => {
         const response = await api.get(`/users/check-username/${encodeURIComponent(username)}`);
-        return response.data as { exists: boolean };
+        return response.data as CheckUsernameResponse;
     },
     updateProfile: async (data: {
         current_password: string;
