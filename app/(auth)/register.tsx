@@ -19,6 +19,7 @@ import {
 import { PasswordInput } from '../../components/passwordInput';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
+import { getRegistrationEmailDomainError } from '../../lib/registrationEmail';
 import { userService } from '../../services/api';
 
 const STEPS = 2;
@@ -61,6 +62,7 @@ export default function RegisterScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [detectingLocation, setDetectingLocation] = useState(false);
+    const [emailValidationError, setEmailValidationError] = useState('');
 
     const { signUp, setPendingCredentials } = useAuth();
     const router = useRouter();
@@ -113,6 +115,12 @@ export default function RegisterScreen() {
             Alert.alert('Error', 'Please fill in Email');
             return false;
         }
+        const emailDomainError = getRegistrationEmailDomainError(email);
+        if (emailDomainError) {
+            setEmailValidationError(emailDomainError);
+            return false;
+        }
+        setEmailValidationError('');
         if (!phoneNumber.trim()) {
             Alert.alert('Error', 'Please fill in Phone number');
             return false;
@@ -369,17 +377,26 @@ export default function RegisterScreen() {
                                     </>
                                 )}
                             </View>
-                            <FormField label="Email">
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="your@email.com"
-                                    placeholderTextColor={Colors.dark.textSecondary}
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                />
-                            </FormField>
+                            <View style={styles.fieldWrapper}>
+                                <Text style={styles.fieldLabel}>Email</Text>
+                                <View style={styles.inputContainer}>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="your@email.com"
+                                        placeholderTextColor={Colors.dark.textSecondary}
+                                        value={email}
+                                        onChangeText={(t) => {
+                                            setEmail(t);
+                                            if (emailValidationError) setEmailValidationError('');
+                                        }}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+                                {emailValidationError ? (
+                                    <Text style={styles.usernameError}>{emailValidationError}</Text>
+                                ) : null}
+                            </View>
                             <FormField label="Phone Number">
                                 <TextInput
                                     style={styles.input}
