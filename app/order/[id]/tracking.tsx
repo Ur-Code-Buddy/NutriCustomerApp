@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { premiumCardShadowSoft, SCREEN_PADDING_H } from '../../../constants/appChrome';
 import { Colors } from '../../../constants/Colors';
 import { isClientTrackingOrderStatus } from '../../../constants/deliveryTracking';
+import DeliveryHandoffOtpCard from '../../../components/DeliveryHandoffOtpCard';
 import { useOrderTracking } from '../../../hooks/useOrderTracking';
 import { orderService } from '../../../services/api';
 
@@ -208,6 +209,10 @@ export default function OrderTrackingMapScreen() {
                 ) : null}
 
                 {phaseLabel ? <Text style={styles.phaseLabel}>{phaseLabel}</Text> : null}
+
+                {normalized === 'OUT_FOR_DELIVERY' ? (
+                    <DeliveryHandoffOtpCard orderId={String(id)} visible compact />
+                ) : null}
 
                 <Text style={styles.panelSectionTitle}>Status</Text>
                 <Text style={styles.statusLine}>{tracking?.order_status ?? normalized}</Text>

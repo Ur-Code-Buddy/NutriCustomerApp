@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { emitAuthFailure } from '../lib/authFailure';
+import type { DeliveryHandoffOtpResponse } from '../types/deliveryHandoff';
 import type { OrderTrackingSnapshot } from '../types/orderTracking';
 
 const API_URL =
@@ -191,6 +192,11 @@ export const orderService = {
     /** GET /orders/:id/tracking — live route snapshot (client: PICKED_UP / OUT_FOR_DELIVERY only). */
     getTracking: async (id: string): Promise<OrderTrackingSnapshot> => {
         const response = await api.get<OrderTrackingSnapshot>(`/orders/${id}/tracking`);
+        return response.data;
+    },
+    /** GET /orders/:id/delivery-handoff-otp — CLIENT only; while OUT_FOR_DELIVERY. */
+    getDeliveryHandoffOtp: async (id: string): Promise<DeliveryHandoffOtpResponse> => {
+        const response = await api.get<DeliveryHandoffOtpResponse>(`/orders/${id}/delivery-handoff-otp`);
         return response.data;
     },
 };

@@ -13,6 +13,7 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DeliveryHandoffOtpCard from '../../../components/DeliveryHandoffOtpCard';
 import DeliveryTrackingCard from '../../../components/DeliveryTrackingCard';
 import { premiumCardShadowSoft, SCREEN_PADDING_H } from '../../../constants/appChrome';
 import { Colors } from '../../../constants/Colors';
@@ -161,6 +162,10 @@ export default function OrderDetailScreen() {
                             <Text style={styles.callDriverText}>Call driver</Text>
                         </TouchableOpacity>
                     </View>
+                )}
+
+                {status === 'OUT_FOR_DELIVERY' && (
+                    <DeliveryHandoffOtpCard orderId={String(id)} visible />
                 )}
 
                 {(status === 'PICKED_UP' || status === 'OUT_FOR_DELIVERY') && (
