@@ -23,6 +23,8 @@ interface AuthContextType {
     signIn: (credentials: { username: string; password: string }) => Promise<void>;
     signUp: (userData: RegisterUserData) => Promise<RegisterNeedsLogin | void>;
     signOut: () => Promise<void>;
+    /** Refetch GET /users/me, update in-memory user and SecureStore. Returns profile or null on failure. */
+    refreshUser: () => Promise<any | null>;
     setPendingCredentials: (creds: PendingCredentials | null) => void;
     clearPendingCredentials: () => void;
 }
@@ -45,6 +47,7 @@ const AuthContext = createContext<AuthContextType>({
     signIn: async () => { },
     signUp: async () => { },
     signOut: async () => { },
+    refreshUser: async () => null,
     setPendingCredentials: () => { },
     clearPendingCredentials: () => { },
 });
@@ -147,6 +150,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null);
     };
 
+    const refreshUser = useCallback(async () => {
+        const token = await getAuthToken();
+        if (!token) return null;
+        try {
+            const profile = await userService.getProfile();
+            setUser(profile);
+            await SecureStore.setItemAsync('user_data', JSON.stringify(profile));
+            return profile;
+        } catch {
+            return null;
+        }
+    }, []);
+
     return (
         <AuthContext.Provider
             value={{
@@ -157,6 +173,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 signIn,
                 signUp,
                 signOut,
+                refreshUser,
                 setPendingCredentials,
                 clearPendingCredentials,
             }}

@@ -52,6 +52,13 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow NutriTiffin to access your photos to set your profile picture.",
+          "cameraPermission": "Allow NutriTiffin to use the camera for your profile picture."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",

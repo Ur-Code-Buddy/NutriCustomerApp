@@ -118,6 +118,41 @@ export interface CheckUsernameResponse {
     suggested_username?: string | null;
 }
 
+/** POST /upload-image — multipart; field name must match backend (multer "file"). */
+export async function uploadImageFile(localUri: string, mimeType: string, filename: string): Promise<string> {
+    const token = await getAuthToken();
+    const formData = new FormData();
+    // RN FormData file part (not a web File/Blob)
+    formData.append('file', { uri: localUri, name: filename, type: mimeType } as any);
+    const res = await fetch(`${API_URL}/upload-image`, {
+        method: 'POST',
+        headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+    });
+    let data: Record<string, unknown> = {};
+    try {
+        data = (await res.json()) as Record<string, unknown>;
+    } catch {
+        /* non-JSON */
+    }
+    if (!res.ok) {
+        const message =
+            typeof data.message === 'string'
+                ? data.message
+                : Array.isArray(data.message)
+                  ? data.message.join(', ')
+                  : `Upload failed (${res.status})`;
+        throw new Error(message);
+    }
+    const url = (data.image_url ?? data.imageUrl) as string | undefined;
+    if (typeof url !== 'string' || !url.trim()) {
+        throw new Error('Invalid upload response: missing image_url');
+    }
+    return url.trim();
+}
+
 export const userService = {
     getProfile: async () => {
         const response = await api.get('/users/me');
@@ -132,6 +167,7 @@ export const userService = {
         address?: string;
         phone_number?: string;
         pincode?: string;
+        profile_picture_url?: string;
     }) => {
         const response = await api.patch('/users/me', data);
         return response.data;

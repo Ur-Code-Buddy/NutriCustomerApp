@@ -1,6 +1,8 @@
 import { useFocusEffect, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import {
     Bug,
+    Camera,
     ChevronRight,
     FileText,
     LogOut,
@@ -10,13 +12,13 @@ import {
     Phone,
     RefreshCw,
     Shield,
-    ShieldCheck,
     Wallet,
     type LucideIcon,
 } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Image,
     Modal,
     Pressable,
@@ -28,6 +30,7 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PasswordInput } from '../../../components/passwordInput';
 import { premiumCardShadowSoft, SCREEN_PADDING_H } from '../../../constants/appChrome';
 import { Colors } from '../../../constants/Colors';
 import { useAuth } from '../../../context/AuthContext';
@@ -36,14 +39,20 @@ import {
     useTabBarScrollResetOnFocus,
 } from '../../../context/TabBarScrollContext';
 import { useTabBarContentPadding } from '../../../hooks/useTabBarContentPadding';
-import { userService } from '../../../services/api';
+import { uploadImageFile, userService } from '../../../services/api';
 import { LEGAL_SLUGS } from '../../../constants/legalDocuments';
 
 const AVATAR_SIZE = 80;
 
 function profilePictureUri(p: Record<string, unknown> | null | undefined): string | null {
     if (!p) return null;
-    for (const key of ['avatar_url', 'image_url', 'profile_image', 'photo_url'] as const) {
+    for (const key of [
+        'profile_picture_url',
+        'avatar_url',
+        'image_url',
+        'profile_image',
+        'photo_url',
+    ] as const) {
         const v = p[key];
         if (typeof v === 'string' && v.trim()) return v.trim();
     }
@@ -90,13 +99,111 @@ export default function ProfileScreen() {
     const tabBarScrollProps = useTabBarScrollProps();
     const tabBarPadBottom = useTabBarContentPadding();
     useTabBarScrollResetOnFocus();
-    const { signOut, user } = useAuth();
+    const { signOut, user, refreshUser } = useAuth();
     const [profile, setProfile] = useState<any>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [contactModalVisible, setContactModalVisible] = useState(false);
+    const [photoConfirmVisible, setPhotoConfirmVisible] = useState(false);
+    const [photoPassword, setPhotoPassword] = useState('');
+    const [pickedImage, setPickedImage] = useState<{
+        uri: string;
+        mimeType: string;
+        filename: string;
+    } | null>(null);
+    const [photoUploading, setPhotoUploading] = useState(false);
 
-    const fetchProfile = async () => {
+    const resetPhotoFlow = useCallback(() => {
+        setPhotoConfirmVisible(false);
+        setPhotoPassword('');
+        setPickedImage(null);
+        setPhotoUploading(false);
+    }, []);
+
+    const beginPhotoConfirm = useCallback((asset: ImagePicker.ImagePickerAsset) => {
+        setPickedImage({
+            uri: asset.uri,
+            mimeType: asset.mimeType ?? 'image/jpeg',
+            filename: asset.fileName ?? `profile-${Date.now()}.jpg`,
+        });
+        setPhotoPassword('');
+        setPhotoConfirmVisible(true);
+    }, []);
+
+    const pickFromLibrary = useCallback(async () => {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+            Alert.alert('Permission needed', 'Allow photo library access to set your profile picture.');
+            return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+        });
+        if (!result.canceled && result.assets[0]) {
+            beginPhotoConfirm(result.assets[0]);
+        }
+    }, [beginPhotoConfirm]);
+
+    const pickFromCamera = useCallback(async () => {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+            Alert.alert('Permission needed', 'Allow camera access to take a profile picture.');
+            return;
+        }
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+        });
+        if (!result.canceled && result.assets[0]) {
+            beginPhotoConfirm(result.assets[0]);
+        }
+    }, [beginPhotoConfirm]);
+
+    const handleAvatarPress = useCallback(() => {
+        Alert.alert('Profile photo', 'Choose a source', [
+            { text: 'Photo library', onPress: () => void pickFromLibrary() },
+            { text: 'Camera', onPress: () => void pickFromCamera() },
+            { text: 'Cancel', style: 'cancel' },
+        ]);
+    }, [pickFromLibrary, pickFromCamera]);
+
+    const submitProfilePhoto = async () => {
+        if (!pickedImage) return;
+        if (!photoPassword.trim()) {
+            Alert.alert('Password required', 'Enter your current password to save the new photo.');
+            return;
+        }
+        setPhotoUploading(true);
+        try {
+            const imageUrl = await uploadImageFile(
+                pickedImage.uri,
+                pickedImage.mimeType,
+                pickedImage.filename
+            );
+            await userService.updateProfile({
+                current_password: photoPassword,
+                profile_picture_url: imageUrl,
+            });
+            const fresh = await refreshUser();
+            if (fresh) setProfile(fresh);
+            else await fetchProfile();
+            resetPhotoFlow();
+            Alert.alert('Success', 'Profile photo updated.');
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { message?: string | string[] } }; message?: string };
+            const raw = err?.response?.data?.message;
+            const msg = Array.isArray(raw) ? raw.join(', ') : raw ?? err?.message;
+            Alert.alert('Error', typeof msg === 'string' ? msg : 'Could not update profile photo');
+        } finally {
+            setPhotoUploading(false);
+        }
+    };
+
+    const fetchProfile = useCallback(async () => {
         try {
             const data = await userService.getProfile();
             setProfile(data);
@@ -107,18 +214,18 @@ export default function ProfileScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [user]);
 
     useFocusEffect(
         useCallback(() => {
-            fetchProfile();
-        }, [])
+            void fetchProfile();
+        }, [fetchProfile])
     );
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        fetchProfile();
-    }, []);
+        void fetchProfile();
+    }, [fetchProfile]);
 
     const avatarSource = profile ?? user;
     const avatarUri = profilePictureUri(avatarSource);
@@ -140,20 +247,34 @@ export default function ProfileScreen() {
                 }
             >
                 <View style={[styles.profileCard, premiumCardShadowSoft]}>
-                    <View
-                        style={[
-                            styles.avatarCircle,
-                            avatarUri ? styles.avatarCircleWithPhoto : styles.avatarCircleInitials,
+                    <Pressable
+                        onPress={handleAvatarPress}
+                        disabled={loading}
+                        style={({ pressed }) => [
+                            styles.avatarTouch,
+                            pressed && !loading ? styles.avatarTouchPressed : undefined,
                         ]}
+                        accessibilityRole="button"
+                        accessibilityLabel="Change profile photo"
                     >
-                        {avatarUri ? (
-                            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-                        ) : (
-                            <Text style={styles.avatarInitials} numberOfLines={1}>
-                                {initialsFromDisplayName(avatarName)}
-                            </Text>
-                        )}
-                    </View>
+                        <View
+                            style={[
+                                styles.avatarCircle,
+                                avatarUri ? styles.avatarCircleWithPhoto : styles.avatarCircleInitials,
+                            ]}
+                        >
+                            {avatarUri ? (
+                                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                            ) : (
+                                <Text style={styles.avatarInitials} numberOfLines={1}>
+                                    {initialsFromDisplayName(avatarName)}
+                                </Text>
+                            )}
+                        </View>
+                        <View style={styles.avatarCameraBadge} pointerEvents="none">
+                            <Camera size={16} color={Colors.dark.primaryForeground} strokeWidth={2.2} />
+                        </View>
+                    </Pressable>
 
                     {loading ? (
                         <ActivityIndicator color={Colors.dark.primary} style={{ marginTop: 20 }} />
@@ -163,12 +284,6 @@ export default function ProfileScreen() {
                             {profile?.username && (
                                 <Text style={styles.usernameHandle}>@{profile.username}</Text>
                             )}
-                            <View style={styles.roleBadgeWrap}>
-                                <View style={styles.roleBadge}>
-                                    <ShieldCheck size={15} color={Colors.dark.success} strokeWidth={2.5} />
-                                    <Text style={styles.roleBadgeText}>{profile?.role || 'CLIENT'}</Text>
-                                </View>
-                            </View>
 
                             {profile?.credits != null && (
                                 <View style={styles.creditsCard}>
@@ -337,6 +452,68 @@ export default function ProfileScreen() {
                     </View>
                 </View>
             </Modal>
+
+            <Modal
+                visible={photoConfirmVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={photoUploading ? undefined : resetPhotoFlow}
+            >
+                <View
+                    style={[
+                        styles.modalRoot,
+                        { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 },
+                    ]}
+                >
+                    <Pressable
+                        style={styles.modalBackdrop}
+                        onPress={photoUploading ? undefined : resetPhotoFlow}
+                        accessibilityRole="button"
+                        accessibilityLabel="Dismiss"
+                    />
+                    <View style={styles.modalPanel}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>New profile photo</Text>
+                            <Text style={styles.modalSubtitle}>
+                                Enter your password to save this picture to your account.
+                            </Text>
+                        </View>
+                        {pickedImage ? (
+                            <Image source={{ uri: pickedImage.uri }} style={styles.photoPreview} />
+                        ) : null}
+                        <Text style={styles.photoPasswordLabel}>Current password</Text>
+                        <PasswordInput
+                            containerStyle={styles.photoPasswordBox}
+                            inputStyle={styles.photoPasswordField}
+                            value={photoPassword}
+                            onChangeText={setPhotoPassword}
+                            placeholder="Required to confirm"
+                            placeholderTextColor={Colors.dark.textSecondary}
+                            editable={!photoUploading}
+                        />
+                        <TouchableOpacity
+                            style={[styles.modalDone, photoUploading && styles.modalDoneDisabled]}
+                            onPress={() => void submitProfilePhoto()}
+                            disabled={photoUploading}
+                            activeOpacity={0.85}
+                        >
+                            {photoUploading ? (
+                                <ActivityIndicator color={Colors.dark.primaryForeground} />
+                            ) : (
+                                <Text style={styles.modalDoneText}>Save photo</Text>
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.photoCancelBtn}
+                            onPress={resetPhotoFlow}
+                            disabled={photoUploading}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={styles.photoCancelBtnText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -382,6 +559,15 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: Colors.dark.border,
     },
+    avatarTouch: {
+        position: 'relative',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 18,
+    },
+    avatarTouchPressed: {
+        opacity: 0.88,
+    },
     avatarCircle: {
         width: AVATAR_SIZE,
         height: AVATAR_SIZE,
@@ -389,7 +575,19 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 18,
+    },
+    avatarCameraBadge: {
+        position: 'absolute',
+        right: 0,
+        bottom: 0,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: Colors.dark.primary,
+        borderWidth: 2,
+        borderColor: Colors.dark.cardElevated,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     avatarCircleInitials: {
         backgroundColor: Colors.dark.primary,
@@ -420,26 +618,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: Colors.dark.textSecondary,
         marginBottom: 10,
-    },
-    roleBadgeWrap: {
-        marginBottom: 16,
-    },
-    roleBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-        paddingHorizontal: 12,
-        paddingVertical: 7,
-        borderRadius: 999,
-        backgroundColor: 'rgba(48, 209, 88, 0.12)',
-        borderWidth: 1,
-        borderColor: 'rgba(48, 209, 88, 0.45)',
-    },
-    roleBadgeText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: Colors.dark.success,
-        letterSpacing: 0.2,
     },
     creditsCard: {
         flexDirection: 'row',
@@ -567,11 +745,53 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    modalDoneDisabled: {
+        opacity: 0.75,
+    },
     modalDoneText: {
         fontSize: 16,
         fontWeight: '700',
         color: Colors.dark.primaryForeground,
         letterSpacing: 0.2,
+    },
+    photoPreview: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        alignSelf: 'center',
+        marginBottom: 16,
+        backgroundColor: Colors.dark.input,
+    },
+    photoPasswordLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: Colors.dark.textSecondary,
+        marginBottom: 8,
+    },
+    photoPasswordBox: {
+        backgroundColor: Colors.dark.backgroundSecondary,
+        borderWidth: 1,
+        borderColor: Colors.dark.border,
+        borderRadius: 14,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        minHeight: 50,
+        marginBottom: 4,
+    },
+    photoPasswordField: {
+        fontSize: 16,
+        color: Colors.dark.text,
+        paddingVertical: 4,
+    },
+    photoCancelBtn: {
+        marginTop: 12,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+    photoCancelBtnText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: Colors.dark.textSecondary,
     },
     actionSection: {
         backgroundColor: Colors.dark.cardElevated,
