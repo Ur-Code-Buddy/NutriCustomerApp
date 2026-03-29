@@ -64,5 +64,6 @@ const styles = StyleSheet.create({
     },
     toggle: {
         marginLeft: 8,
+        zIndex: 1,
     },
 });
