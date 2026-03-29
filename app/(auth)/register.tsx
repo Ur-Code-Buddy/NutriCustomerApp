@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { PasswordInput } from '../../components/passwordInput';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/api';
@@ -408,13 +409,13 @@ export default function RegisterScreen() {
                                 />
                             </FormField>
                             <FormField label="Password">
-                                <TextInput
-                                    style={styles.input}
+                                <PasswordInput
+                                    containerStyle={styles.passwordInputRow}
+                                    inputStyle={styles.input}
                                     placeholder="Create a password"
                                     placeholderTextColor={Colors.dark.textSecondary}
                                     value={password}
                                     onChangeText={setPassword}
-                                    secureTextEntry
                                 />
                             </FormField>
                         </>
@@ -593,6 +594,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: Colors.dark.border,
+    },
+    passwordInputRow: {
+        alignSelf: 'stretch',
+        minWidth: 0,
+        minHeight: 52,
     },
     addressInputContainer: {
         minHeight: 100,

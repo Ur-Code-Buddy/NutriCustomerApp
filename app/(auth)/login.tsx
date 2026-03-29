@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { Lock, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { PasswordInput } from '../../components/passwordInput';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 
@@ -53,17 +54,15 @@ export default function LoginScreen() {
                         />
                     </View>
 
-                    <View style={styles.inputContainer}>
-                        <Lock color={Colors.dark.textSecondary} size={20} style={styles.icon} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Password"
-                            placeholderTextColor={Colors.dark.textSecondary}
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                        />
-                    </View>
+                    <PasswordInput
+                        leadingIcon={<Lock color={Colors.dark.textSecondary} size={20} style={styles.icon} />}
+                        containerStyle={styles.inputContainer}
+                        inputStyle={styles.input}
+                        placeholder="Password"
+                        placeholderTextColor={Colors.dark.textSecondary}
+                        value={password}
+                        onChangeText={setPassword}
+                    />
 
                     <TouchableOpacity
                         style={styles.button}

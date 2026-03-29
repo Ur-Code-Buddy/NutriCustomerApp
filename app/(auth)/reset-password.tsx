@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { PasswordInput } from '../../components/passwordInput';
 import { Colors } from '../../constants/Colors';
 import { authService } from '../../services/api';
 
@@ -87,29 +88,25 @@ export default function ResetPasswordScreen() {
                         />
                     </View>
 
-                    <View style={styles.inputContainer}>
-                        <Lock color={Colors.dark.textSecondary} size={20} style={styles.icon} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="New password (min 6 chars)"
-                            placeholderTextColor={Colors.dark.textSecondary}
-                            value={newPassword}
-                            onChangeText={setNewPassword}
-                            secureTextEntry
-                        />
-                    </View>
+                    <PasswordInput
+                        leadingIcon={<Lock color={Colors.dark.textSecondary} size={20} style={styles.icon} />}
+                        containerStyle={styles.inputContainer}
+                        inputStyle={styles.input}
+                        placeholder="New password (min 6 chars)"
+                        placeholderTextColor={Colors.dark.textSecondary}
+                        value={newPassword}
+                        onChangeText={setNewPassword}
+                    />
 
-                    <View style={styles.inputContainer}>
-                        <Lock color={Colors.dark.textSecondary} size={20} style={styles.icon} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Confirm password"
-                            placeholderTextColor={Colors.dark.textSecondary}
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            secureTextEntry
-                        />
-                    </View>
+                    <PasswordInput
+                        leadingIcon={<Lock color={Colors.dark.textSecondary} size={20} style={styles.icon} />}
+                        containerStyle={styles.inputContainer}
+                        inputStyle={styles.input}
+                        placeholder="Confirm password"
+                        placeholderTextColor={Colors.dark.textSecondary}
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                    />
 
                     <TouchableOpacity
                         style={[styles.btn, styles.btnPrimary, loading && styles.btnDisabled]}

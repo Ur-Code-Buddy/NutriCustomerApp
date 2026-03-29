@@ -14,6 +14,7 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PasswordInput } from '../../../components/passwordInput';
 import { SCREEN_PADDING_H } from '../../../constants/appChrome';
 import { Colors } from '../../../constants/Colors';
 import {
@@ -125,13 +126,13 @@ export default function EditProfileScreen() {
                     {...tabBarScrollProps}
                 >
                     <Text style={styles.label}>Current password</Text>
-                    <TextInput
-                        style={styles.input}
+                    <PasswordInput
+                        containerStyle={styles.passwordContainer}
+                        inputStyle={styles.passwordField}
                         value={currentPassword}
                         onChangeText={setCurrentPassword}
                         placeholder="Enter your password to confirm"
                         placeholderTextColor={Colors.dark.textSecondary}
-                        secureTextEntry
                     />
 
                     <Text style={styles.label}>Phone</Text>
@@ -239,6 +240,20 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         paddingHorizontal: 16,
         paddingVertical: 14,
+        fontSize: 16,
+        color: Colors.dark.text,
+    },
+    passwordContainer: {
+        backgroundColor: Colors.dark.cardElevated,
+        borderWidth: 1,
+        borderColor: Colors.dark.border,
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        minHeight: 52,
+    },
+    passwordField: {
+        paddingVertical: 4,
         fontSize: 16,
         color: Colors.dark.text,
     },
